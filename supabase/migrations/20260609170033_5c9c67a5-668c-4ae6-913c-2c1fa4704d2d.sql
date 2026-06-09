@@ -1,0 +1,1 @@
+DELETE FROM public.transacoes_extrato WHERE mes_referencia LIKE '2025-%';
