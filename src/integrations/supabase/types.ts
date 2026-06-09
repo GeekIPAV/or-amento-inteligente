@@ -157,12 +157,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      anos_transacoes_disponiveis: {
+        Args: never
+        Returns: {
+          ano: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      resumo_transacoes_mensal: {
+        Args: { p_ano: number }
+        Returns: {
+          despesa: number
+          linhas: number
+          mes: number
+          receita: number
+        }[]
       }
     }
     Enums: {
