@@ -44,7 +44,7 @@ function KpiCard({
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
         <div className="flex justify-between text-muted-foreground">
-          <span>Orçado</span><span>{currency.format(orcado)}</span>
+          <span>Orçamentado{"\n"}</span><span>{currency.format(orcado)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Desvio</span>
@@ -118,7 +118,7 @@ function Dashboard() {
         <KpiCard titulo="Despesa Realizada" orcado={data?.kpis.despesaOrc ?? 0} realizado={data?.kpis.despesaReal ?? 0} modo="despesa" />
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2"><Wallet className="size-4" /> Resultado Orçado</CardDescription>
+            <CardDescription className="flex items-center gap-2"><Wallet className="size-4" /> Resultado Orçamentado{"\n"}</CardDescription>
             <CardTitle className="text-2xl">{currency.format((data?.kpis.receitaOrc ?? 0) - (data?.kpis.despesaOrc ?? 0))}</CardTitle>
           </CardHeader>
         </Card>
@@ -153,7 +153,7 @@ function Dashboard() {
                       labelFormatter={(m) => MESES_LONGOS[(m as number) - 1]}
                     />
                     <Legend />
-                    <Bar dataKey={t === "receita" ? "receitaOrc" : "despesaOrc"} name="Orçado" fill="hsl(220 70% 60%)" />
+                    <Bar dataKey={t === "receita" ? "receitaOrc" : "despesaOrc"} name={"Orçamentado\n"} fill="hsl(220 70% 60%)" />
                     <Bar dataKey={t === "receita" ? "receitaReal" : "despesaReal"} name="Realizado" fill={t === "receita" ? "hsl(160 70% 45%)" : "hsl(0 70% 55%)"} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -174,7 +174,7 @@ function Dashboard() {
               <TableRow>
                 <TableHead>Projeto</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Orçado (acum.)</TableHead>
+                <TableHead className="text-right">Orçamentado{"\n"}(acum.)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
