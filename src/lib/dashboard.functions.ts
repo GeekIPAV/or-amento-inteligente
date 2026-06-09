@@ -40,14 +40,10 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       else porProjeto.set(key, { projeto: o.projeto, tipo: o.tipo, orcado: totalProj });
     }
 
-    // Transações do ano (todos os meses até 12 para gráfico)
-    const inicio = `${ano}-01`;
-    const fim = `${ano}-12`;
-    const { data: txs, error: errT } = await context.supabase
-      .from("transacoes_extrato")
-      .select("mes_referencia, debito, credito")
-      .gte("mes_referencia", inicio)
-      .lte("mes_referencia", fim);
+    // Transações do ano agregadas na base de dados, para não truncar anos com muitos movimentos.
+    const { data: txs, error: errT } = await context.supabase.rpc("resumo_transacoes_mensal", {
+      p_ano: ano,
+    });
     if (errT) throw new Error(errT.message);
 
     const realMensal = {
@@ -55,10 +51,10 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       DESPESA: Array(12).fill(0) as number[],
     };
     for (const t of txs ?? []) {
-      const m = parseInt(t.mes_referencia.slice(5, 7), 10);
+      const m = Number(t.mes);
       if (m >= 1 && m <= 12) {
-        realMensal.RECEITA[m - 1] += Number(t.credito ?? 0);
-        realMensal.DESPESA[m - 1] += Number(t.debito ?? 0);
+        realMensal.RECEITA[m - 1] += Number(t.receita ?? 0);
+        realMensal.DESPESA[m - 1] += Number(t.despesa ?? 0);
       }
     }
 
@@ -93,14 +89,12 @@ export const anosDisponiveis = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const [orcs, txs] = await Promise.all([
       context.supabase.from("orcamentos").select("ano"),
-      context.supabase.from("transacoes_extrato").select("mes_referencia"),
+      context.supabase.rpc("anos_transacoes_disponiveis"),
     ]);
     const set = new Set<number>();
     (orcs.data ?? []).forEach((r) => set.add(r.ano));
-    (txs.data ?? []).forEach((r) => {
-      const y = parseInt(r.mes_referencia.slice(0, 4), 10);
-      if (!Number.isNaN(y)) set.add(y);
-    });
+    if (txs.error) throw new Error(txs.error.message);
+    (txs.data ?? []).forEach((r) => set.add(r.ano));
     if (set.size === 0) set.add(new Date().getFullYear());
     return Array.from(set).sort((a, b) => b - a);
   });
