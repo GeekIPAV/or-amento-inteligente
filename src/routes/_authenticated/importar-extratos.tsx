@@ -31,9 +31,6 @@ function ImportarExtratosPage() {
   const historicoFn = useServerFn(historicoImportacoes);
   const apagarFn = useServerFn(apagarMesExtrato);
 
-  const now = new Date();
-  const [ano, setAno] = useState(now.getFullYear());
-  const [mes, setMes] = useState(now.getMonth() + 1);
   const [files, setFiles] = useState<FileParsed[]>([]);
   const [importing, setImporting] = useState(false);
 
@@ -61,9 +58,12 @@ function ImportarExtratosPage() {
     accept: { "text/csv": [".csv"], "text/plain": [".txt"] },
   });
 
-  const mesRef = `${ano}-${String(mes).padStart(2, "0")}`;
-
-  const totalLinhas = files.reduce((s, f) => s + f.result.linhas.length, 0);
+  const todasLinhas = files.flatMap((f) => f.result.linhas);
+  const totalLinhas = todasLinhas.length;
+  const linhasSemData = todasLinhas.filter((l) => !l.data).length;
+  const mesesDetetados = Array.from(
+    new Set(todasLinhas.map((l) => l.data?.slice(0, 7)).filter(Boolean) as string[]),
+  ).sort();
 
   const handleImportar = async () => {
     if (totalLinhas === 0) {
@@ -72,9 +72,11 @@ function ImportarExtratosPage() {
     }
     setImporting(true);
     try {
-      const linhas = files.flatMap((f) => f.result.linhas);
-      const r = await importarFn({ data: { mes_referencia: mesRef, linhas } });
-      toast.success(`${r.inseridos} linhas importadas em ${mesRef}`);
+      const r = await importarFn({ data: { linhas: todasLinhas } });
+      toast.success(
+        `${r.inseridos} linhas importadas` +
+          (r.ignoradas_sem_data ? ` · ${r.ignoradas_sem_data} ignoradas sem data` : ""),
+      );
       setFiles([]);
       qc.invalidateQueries({ queryKey: ["import-historico"] });
       qc.invalidateQueries({ queryKey: ["resumo"] });
@@ -98,10 +100,9 @@ function ImportarExtratosPage() {
     }
   };
 
-  const anosLista = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
-
   // preview = primeiras 10 do primeiro ficheiro
   const preview = files[0]?.result.linhas.slice(0, 10) ?? [];
+
 
   return (
     <div className="p-6 space-y-6">
@@ -113,26 +114,26 @@ function ImportarExtratosPage() {
       <Card>
         <CardHeader>
           <CardTitle>Mês de referência</CardTitle>
-          <CardDescription>As linhas importadas serão associadas a este mês.</CardDescription>
+          <CardDescription>
+            O mês é determinado automaticamente a partir da data de cada linha do CSV.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex gap-2">
-          <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {anosLista.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MESES_LONGOS.map((nome, i) => (
-                <SelectItem key={i} value={String(i + 1)}>{nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Badge variant="secondary" className="self-center">{mesRef}</Badge>
+        <CardContent className="flex flex-wrap gap-2">
+          {mesesDetetados.length === 0 ? (
+            <span className="text-sm text-muted-foreground">
+              Carregue ficheiros para ver os meses detetados.
+            </span>
+          ) : (
+            mesesDetetados.map((m) => (
+              <Badge key={m} variant="secondary">{m}</Badge>
+            ))
+          )}
+          {linhasSemData > 0 && (
+            <Badge variant="destructive">{linhasSemData} sem data (serão ignoradas)</Badge>
+          )}
         </CardContent>
       </Card>
+
 
       <Card>
         <CardContent className="pt-6">
@@ -161,7 +162,7 @@ function ImportarExtratosPage() {
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setFiles([])}>Limpar</Button>
               <Button onClick={handleImportar} disabled={importing || totalLinhas === 0}>
-                <Upload className="size-4" /> {importing ? "A importar…" : `Importar para ${mesRef}`}
+                <Upload className="size-4" /> {importing ? "A importar…" : `Importar ${totalLinhas} linhas`}
               </Button>
             </div>
           </CardHeader>
