@@ -77,7 +77,7 @@ function Dashboard() {
   });
 
   const set = (patch: Partial<{ ano: number; mes: number }>) =>
-    navigate({ search: (prev) => ({ ...prev, ...patch }) });
+    navigate({ search: (prev: any) => ({ ...prev, ...patch }) });
 
   const projetos = useMemo(() => {
     if (!data) return [];

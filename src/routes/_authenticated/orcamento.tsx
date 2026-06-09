@@ -91,7 +91,7 @@ function OrcamentoPage() {
   }, [rows]);
 
   const set = (patch: Partial<{ ano: number; tipo: "RECEITA" | "DESPESA"; versao: number }>) =>
-    navigate({ search: (prev) => ({ ...prev, ...patch }) });
+    navigate({ search: (prev: any) => ({ ...prev, ...patch }) });
 
   const updateCell = (idx: number, field: "projeto" | Mes, value: string) => {
     setLinhas((prev) => {
