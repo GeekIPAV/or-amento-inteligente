@@ -31,9 +31,6 @@ function ImportarExtratosPage() {
   const historicoFn = useServerFn(historicoImportacoes);
   const apagarFn = useServerFn(apagarMesExtrato);
 
-  const now = new Date();
-  const [ano, setAno] = useState(now.getFullYear());
-  const [mes, setMes] = useState(now.getMonth() + 1);
   const [files, setFiles] = useState<FileParsed[]>([]);
   const [importing, setImporting] = useState(false);
 
@@ -61,9 +58,12 @@ function ImportarExtratosPage() {
     accept: { "text/csv": [".csv"], "text/plain": [".txt"] },
   });
 
-  const mesRef = `${ano}-${String(mes).padStart(2, "0")}`;
-
-  const totalLinhas = files.reduce((s, f) => s + f.result.linhas.length, 0);
+  const todasLinhas = files.flatMap((f) => f.result.linhas);
+  const totalLinhas = todasLinhas.length;
+  const linhasSemData = todasLinhas.filter((l) => !l.data).length;
+  const mesesDetetados = Array.from(
+    new Set(todasLinhas.map((l) => l.data?.slice(0, 7)).filter(Boolean) as string[]),
+  ).sort();
 
   const handleImportar = async () => {
     if (totalLinhas === 0) {
@@ -72,9 +72,11 @@ function ImportarExtratosPage() {
     }
     setImporting(true);
     try {
-      const linhas = files.flatMap((f) => f.result.linhas);
-      const r = await importarFn({ data: { mes_referencia: mesRef, linhas } });
-      toast.success(`${r.inseridos} linhas importadas em ${mesRef}`);
+      const r = await importarFn({ data: { linhas: todasLinhas } });
+      toast.success(
+        `${r.inseridos} linhas importadas` +
+          (r.ignoradas_sem_data ? ` · ${r.ignoradas_sem_data} ignoradas sem data` : ""),
+      );
       setFiles([]);
       qc.invalidateQueries({ queryKey: ["import-historico"] });
       qc.invalidateQueries({ queryKey: ["resumo"] });
@@ -98,10 +100,9 @@ function ImportarExtratosPage() {
     }
   };
 
-  const anosLista = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
-
   // preview = primeiras 10 do primeiro ficheiro
   const preview = files[0]?.result.linhas.slice(0, 10) ?? [];
+
 
   return (
     <div className="p-6 space-y-6">
