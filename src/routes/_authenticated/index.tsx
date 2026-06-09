@@ -118,7 +118,7 @@ function Dashboard() {
         <KpiCard titulo="Despesa Realizada" orcado={data?.kpis.despesaOrc ?? 0} realizado={data?.kpis.despesaReal ?? 0} modo="despesa" />
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2 whitespace-pre-wrap"><Wallet className="size-4" /> Resultado Orçamentado{"\n"}</CardDescription>
+            <CardDescription className="flex items-center gap-2"><Wallet className="size-4" /> Resultado Orçamentado</CardDescription>
             <CardTitle className="text-2xl">{currency.format((data?.kpis.receitaOrc ?? 0) - (data?.kpis.despesaOrc ?? 0))}</CardTitle>
           </CardHeader>
         </Card>
