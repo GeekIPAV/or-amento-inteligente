@@ -1,0 +1,1 @@
+UPDATE public.transacoes_extrato SET mes_referencia = to_char(data, 'YYYY-MM') WHERE data IS NOT NULL AND mes_referencia <> to_char(data, 'YYYY-MM');
