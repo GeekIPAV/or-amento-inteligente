@@ -14,7 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      orcamentos: {
+        Row: {
+          ano: number
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          m1: number
+          m10: number
+          m11: number
+          m12: number
+          m2: number
+          m3: number
+          m4: number
+          m5: number
+          m6: number
+          m7: number
+          m8: number
+          m9: number
+          projeto: string
+          tipo: Database["public"]["Enums"]["tipo_orcamento"]
+          versao: number
+        }
+        Insert: {
+          ano: number
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          m1?: number
+          m10?: number
+          m11?: number
+          m12?: number
+          m2?: number
+          m3?: number
+          m4?: number
+          m5?: number
+          m6?: number
+          m7?: number
+          m8?: number
+          m9?: number
+          projeto: string
+          tipo: Database["public"]["Enums"]["tipo_orcamento"]
+          versao?: number
+        }
+        Update: {
+          ano?: number
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          m1?: number
+          m10?: number
+          m11?: number
+          m12?: number
+          m2?: number
+          m3?: number
+          m4?: number
+          m5?: number
+          m6?: number
+          m7?: number
+          m8?: number
+          m9?: number
+          projeto?: string
+          tipo?: Database["public"]["Enums"]["tipo_orcamento"]
+          versao?: number
+        }
+        Relationships: []
+      }
+      transacoes_extrato: {
+        Row: {
+          centro_custo: string | null
+          conta: string | null
+          credito: number
+          data: string | null
+          debito: number
+          descricao_conta: string | null
+          diario: string | null
+          id: string
+          importado_em: string
+          importado_por: string | null
+          mes_referencia: string
+          movimento: string | null
+          num_documento: string | null
+        }
+        Insert: {
+          centro_custo?: string | null
+          conta?: string | null
+          credito?: number
+          data?: string | null
+          debito?: number
+          descricao_conta?: string | null
+          diario?: string | null
+          id?: string
+          importado_em?: string
+          importado_por?: string | null
+          mes_referencia: string
+          movimento?: string | null
+          num_documento?: string | null
+        }
+        Update: {
+          centro_custo?: string | null
+          conta?: string | null
+          credito?: number
+          data?: string | null
+          debito?: number
+          descricao_conta?: string | null
+          diario?: string | null
+          id?: string
+          importado_em?: string
+          importado_por?: string | null
+          mes_referencia?: string
+          movimento?: string | null
+          num_documento?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +139,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      tipo_orcamento: "RECEITA" | "DESPESA"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +266,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      tipo_orcamento: ["RECEITA", "DESPESA"],
+    },
   },
 } as const
