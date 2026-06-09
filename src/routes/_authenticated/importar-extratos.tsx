@@ -162,7 +162,7 @@ function ImportarExtratosPage() {
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setFiles([])}>Limpar</Button>
               <Button onClick={handleImportar} disabled={importing || totalLinhas === 0}>
-                <Upload className="size-4" /> {importing ? "A importar…" : `Importar para ${mesRef}`}
+                <Upload className="size-4" /> {importing ? "A importar…" : `Importar ${totalLinhas} linhas`}
               </Button>
             </div>
           </CardHeader>
