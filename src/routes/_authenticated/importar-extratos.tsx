@@ -114,26 +114,26 @@ function ImportarExtratosPage() {
       <Card>
         <CardHeader>
           <CardTitle>Mês de referência</CardTitle>
-          <CardDescription>As linhas importadas serão associadas a este mês.</CardDescription>
+          <CardDescription>
+            O mês é determinado automaticamente a partir da data de cada linha do CSV.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex gap-2">
-          <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {anosLista.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MESES_LONGOS.map((nome, i) => (
-                <SelectItem key={i} value={String(i + 1)}>{nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Badge variant="secondary" className="self-center">{mesRef}</Badge>
+        <CardContent className="flex flex-wrap gap-2">
+          {mesesDetetados.length === 0 ? (
+            <span className="text-sm text-muted-foreground">
+              Carregue ficheiros para ver os meses detetados.
+            </span>
+          ) : (
+            mesesDetetados.map((m) => (
+              <Badge key={m} variant="secondary">{m}</Badge>
+            ))
+          )}
+          {linhasSemData > 0 && (
+            <Badge variant="destructive">{linhasSemData} sem data (serão ignoradas)</Badge>
+          )}
         </CardContent>
       </Card>
+
 
       <Card>
         <CardContent className="pt-6">
