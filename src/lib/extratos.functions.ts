@@ -17,20 +17,28 @@ const linhaSchema = z.object({
 export const importarExtrato = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (d: { mes_referencia: string; linhas: z.input<typeof linhaSchema>[] }) =>
+    (d: { mes_referencia?: string; linhas: z.input<typeof linhaSchema>[] }) =>
       z
         .object({
-          mes_referencia: z.string().regex(/^\d{4}-\d{2}$/),
+          mes_referencia: z.string().regex(/^\d{4}-\d{2}$/).optional(),
           linhas: z.array(linhaSchema).min(1).max(20000),
         })
         .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const payload = data.linhas.map((l) => ({
-      ...l,
-      mes_referencia: data.mes_referencia,
-      importado_por: context.userId,
-    }));
+    const payload: any[] = [];
+    let semData = 0;
+    for (const l of data.linhas) {
+      let mes = data.mes_referencia;
+      if (l.data && /^\d{4}-\d{2}-\d{2}/.test(l.data)) {
+        mes = l.data.slice(0, 7);
+      }
+      if (!mes) {
+        semData++;
+        continue;
+      }
+      payload.push({ ...l, mes_referencia: mes, importado_por: context.userId });
+    }
 
     // Insere em chunks de 500
     const chunkSize = 500;
@@ -41,8 +49,9 @@ export const importarExtrato = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       inseridos += chunk.length;
     }
-    return { inseridos };
+    return { inseridos, ignoradas_sem_data: semData };
   });
+
 
 export const historicoImportacoes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
