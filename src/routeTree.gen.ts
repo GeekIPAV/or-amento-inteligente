@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedOrcamentoRouteImport } from './routes/_authenticated/orcamento'
+import { Route as AuthenticatedMovimentosRouteImport } from './routes/_authenticated/movimentos'
 import { Route as AuthenticatedImportarExtratosRouteImport } from './routes/_authenticated/importar-extratos'
 
 const AuthRoute = AuthRouteImport.update({
@@ -34,6 +35,11 @@ const AuthenticatedOrcamentoRoute = AuthenticatedOrcamentoRouteImport.update({
   path: '/orcamento',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMovimentosRoute = AuthenticatedMovimentosRouteImport.update({
+  id: '/movimentos',
+  path: '/movimentos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedImportarExtratosRoute =
   AuthenticatedImportarExtratosRouteImport.update({
     id: '/importar-extratos',
@@ -45,11 +51,13 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/importar-extratos': typeof AuthenticatedImportarExtratosRoute
+  '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/importar-extratos': typeof AuthenticatedImportarExtratosRoute
+  '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
   '/': typeof AuthenticatedIndexRoute
 }
@@ -58,19 +66,21 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/importar-extratos': typeof AuthenticatedImportarExtratosRoute
+  '/_authenticated/movimentos': typeof AuthenticatedMovimentosRoute
   '/_authenticated/orcamento': typeof AuthenticatedOrcamentoRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/importar-extratos' | '/orcamento'
+  fullPaths: '/' | '/auth' | '/importar-extratos' | '/movimentos' | '/orcamento'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/importar-extratos' | '/orcamento' | '/'
+  to: '/auth' | '/importar-extratos' | '/movimentos' | '/orcamento' | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/importar-extratos'
+    | '/_authenticated/movimentos'
     | '/_authenticated/orcamento'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
@@ -110,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOrcamentoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/movimentos': {
+      id: '/_authenticated/movimentos'
+      path: '/movimentos'
+      fullPath: '/movimentos'
+      preLoaderRoute: typeof AuthenticatedMovimentosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/importar-extratos': {
       id: '/_authenticated/importar-extratos'
       path: '/importar-extratos'
@@ -122,12 +139,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportarExtratosRoute: typeof AuthenticatedImportarExtratosRoute
+  AuthenticatedMovimentosRoute: typeof AuthenticatedMovimentosRoute
   AuthenticatedOrcamentoRoute: typeof AuthenticatedOrcamentoRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportarExtratosRoute: AuthenticatedImportarExtratosRoute,
+  AuthenticatedMovimentosRoute: AuthenticatedMovimentosRoute,
   AuthenticatedOrcamentoRoute: AuthenticatedOrcamentoRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
