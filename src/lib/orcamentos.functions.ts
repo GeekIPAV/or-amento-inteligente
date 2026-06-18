@@ -128,6 +128,8 @@ export const guardarLinhas = createServerFn({ method: "POST" })
     for (const l of data.linhas) {
       const payload = {
         projeto: l.projeto,
+        conta: l.conta ?? null,
+        descricao_conta: l.descricao_conta ?? null,
         ano: data.ano,
         tipo: data.tipo,
         versao: data.versao,
