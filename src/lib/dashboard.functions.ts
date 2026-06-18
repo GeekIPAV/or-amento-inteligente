@@ -80,27 +80,38 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     });
     if (errP) throw new Error(errP.message);
 
-    type ProjRow = { projeto: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number };
+    type ProjRow = { projeto: string; nome: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number };
     const projMap = new Map<string, ProjRow>();
     for (const p of porProjeto.values()) {
-      projMap.set(`${p.projeto}|${p.tipo}`, { ...p, realizado: 0 });
+      projMap.set(`${p.projeto}|${p.tipo}`, { ...p, nome: p.projeto, realizado: 0 });
     }
-    for (const t of (txsProj ?? []) as Array<{ projeto: string; receita: number; despesa: number }>) {
+    for (const t of (txsProj ?? []) as Array<{ projeto: string; nome_projeto?: string; receita: number; despesa: number }>) {
       const projeto = String(t.projeto ?? "(Sem projeto)");
+      const nome = String(t.nome_projeto ?? projeto);
       const receita = Number(t.receita ?? 0);
       const despesa = Number(t.despesa ?? 0);
       if (receita !== 0) {
         const key = `${projeto}|RECEITA`;
         const r = projMap.get(key);
-        if (r) r.realizado += receita;
-        else projMap.set(key, { projeto, tipo: "RECEITA", orcado: 0, realizado: receita });
+        if (r) { r.realizado += receita; r.nome = nome; }
+        else projMap.set(key, { projeto, nome, tipo: "RECEITA", orcado: 0, realizado: receita });
       }
       if (despesa !== 0) {
         const key = `${projeto}|DESPESA`;
         const r = projMap.get(key);
-        if (r) r.realizado += despesa;
-        else projMap.set(key, { projeto, tipo: "DESPESA", orcado: 0, realizado: despesa });
+        if (r) { r.realizado += despesa; r.nome = nome; }
+        else projMap.set(key, { projeto, nome, tipo: "DESPESA", orcado: 0, realizado: despesa });
       }
+    }
+
+    // Aplicar mapeamento de nomes também a projetos que só têm orçamento
+    const { data: mapas } = await context.supabase
+      .from("centro_custo_projetos")
+      .select("centro_custo, nome_projeto");
+    const nomeByCC = new Map<string, string>((mapas ?? []).map((m) => [m.centro_custo, m.nome_projeto]));
+    for (const r of projMap.values()) {
+      const n = nomeByCC.get(r.projeto);
+      if (n) r.nome = n;
     }
 
     return {
@@ -112,6 +123,7 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       projetos: Array.from(projMap.values()),
     };
   });
+
 
 export const anosDisponiveis = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
