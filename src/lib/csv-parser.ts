@@ -115,15 +115,41 @@ export function parseCSV(text: string): ParseResult {
 
   for (const row of result.data) {
     if (!row || typeof row !== "object") continue;
-    const debito = cols.debito ? parseNumber(row[cols.debito]) : 0;
-    const credito = cols.credito ? parseNumber(row[cols.credito]) : 0;
+
     const conta = cols.conta ? String(row[cols.conta] ?? "").trim() : "";
-    if (!conta && debito === 0 && credito === 0) {
+
+    // 1. Ignorar tudo o que não seja um número de conta real (Saldos, Totais, etc)
+    if (!/^\d/.test(conta)) {
       invalidas++;
       continue;
     }
+
+    const rawData = cols.data ? String(row[cols.data] ?? "").trim() : "";
+    const doc = cols.num_documento ? String(row[cols.num_documento] ?? "").trim() : "";
+    const mov = cols.movimento ? String(row[cols.movimento] ?? "").trim() : "";
+
+    // 2. Ignorar Aberturas (mês 00), Fechos/Apuramentos (mês 14) e documentos de apuramento
+    if (
+      rawData.includes(".00.") ||
+      rawData.includes(".14.") ||
+      doc.toLowerCase().includes("apuramento") ||
+      mov.toLowerCase().includes("apuramento")
+    ) {
+      invalidas++;
+      continue;
+    }
+
+    const debito = cols.debito ? parseNumber(row[cols.debito]) : 0;
+    const credito = cols.credito ? parseNumber(row[cols.credito]) : 0;
+
+    // 3. Ignorar linhas sem valores
+    if (debito === 0 && credito === 0) {
+      invalidas++;
+      continue;
+    }
+
     linhas.push({
-      conta: conta || null,
+      conta,
       descricao_conta: cols.descricao_conta ? String(row[cols.descricao_conta] ?? "").trim() || null : null,
       data: cols.data ? parseData(row[cols.data]) : null,
       num_documento: cols.num_documento ? String(row[cols.num_documento] ?? "").trim() || null : null,
