@@ -329,6 +329,7 @@ function OrcamentoPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[180px] sticky left-0 bg-card">Projeto</TableHead>
+                  <TableHead className="min-w-[200px]">Conta</TableHead>
                   {MESES_CURTOS.map((m) => <TableHead key={m} className="text-right">{m}</TableHead>)}
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="w-10"></TableHead>
@@ -336,9 +337,9 @@ function OrcamentoPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground">A carregar…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={16} className="text-center text-muted-foreground">A carregar…</TableCell></TableRow>
                 ) : linhas.length === 0 ? (
-                  <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground">Sem projetos. Use "Adicionar Projeto".</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={16} className="text-center text-muted-foreground">Sem linhas. Use "Adicionar Projeto" ou "Importar Extrato".</TableCell></TableRow>
                 ) : linhas.map((l, i) => (
                   <TableRow key={l.id ?? `new-${i}`}>
                     <TableCell className="sticky left-0 bg-card">
@@ -348,6 +349,24 @@ function OrcamentoPage() {
                         disabled={!isAtiva}
                         className="h-8"
                       />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <div className="flex flex-col gap-1">
+                        <Input
+                          value={l.conta ?? ""}
+                          onChange={(e) => updateCell(i, "conta", e.target.value)}
+                          disabled={!isAtiva}
+                          className="h-7 text-xs"
+                          placeholder="Conta"
+                        />
+                        <Input
+                          value={l.descricao_conta ?? ""}
+                          onChange={(e) => updateCell(i, "descricao_conta", e.target.value)}
+                          disabled={!isAtiva}
+                          className="h-7 text-xs"
+                          placeholder="Descrição"
+                        />
+                      </div>
                     </TableCell>
                     {meses.map((m) => (
                       <TableCell key={m} className="p-1">
