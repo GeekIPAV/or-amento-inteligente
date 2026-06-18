@@ -184,7 +184,7 @@ function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Resumo por Projeto</CardTitle>
-          <CardDescription>Valores orçados acumulados até {MESES_LONGOS[mes - 1]}</CardDescription>
+          <CardDescription>Centros de custo acumulados até {MESES_LONGOS[mes - 1]}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -192,19 +192,27 @@ function Dashboard() {
               <TableRow>
                 <TableHead>Projeto</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead className="text-right whitespace-pre-wrap">Orçamentado{"\n"}(acum.)</TableHead>
+                <TableHead className="text-right">Orçamentado</TableHead>
+                <TableHead className="text-right">Realizado</TableHead>
+                <TableHead className="text-right">Desvio</TableHead>
+                <TableHead className="text-right">Execução</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">A carregar…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">A carregar…</TableCell></TableRow>
               ) : projetos.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Sem orçamentos ativos para {ano}.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem dados para {ano}.</TableCell></TableRow>
               ) : projetos.map((p) => (
                 <TableRow key={`${p.projeto}-${p.tipo}`}>
                   <TableCell className="font-medium">{p.projeto}</TableCell>
                   <TableCell>{p.tipo === "RECEITA" ? "Receita" : "Despesa"}</TableCell>
                   <TableCell className="text-right">{currency.format(p.orcado)}</TableCell>
+                  <TableCell className="text-right">{currency.format(p.realizado)}</TableCell>
+                  <TableCell className={cn("text-right font-medium", p.desvio >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                    {currency.format(p.desvio)}
+                  </TableCell>
+                  <TableCell className="text-right">{p.orcado === 0 ? "—" : percent(p.exec)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
