@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/orcamento", label: "Orçamento", icon: FileSpreadsheet },
+  { to: "/movimentos", label: "Movimentos", icon: TableIcon },
   { to: "/importar-extratos", label: "Importar Extratos", icon: Upload },
 ] as const;
 
