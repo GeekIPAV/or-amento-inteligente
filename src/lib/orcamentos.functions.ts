@@ -32,6 +32,15 @@ const importLinhaSchema = z.object({
   credito: z.number(),
 });
 
+const aggLinhaSchema = z.object({
+  ano: z.number().int(),
+  projeto: z.string().trim().min(1).max(200),
+  conta: z.string().trim().max(120).nullable(),
+  descricao_conta: z.string().trim().max(400).nullable(),
+  tipo: tipoSchema,
+  meses: z.array(z.number()).length(12),
+});
+
 export const listarVersoes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { ano: number; tipo: "RECEITA" | "DESPESA" }) =>
