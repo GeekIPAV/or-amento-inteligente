@@ -235,7 +235,7 @@ function Dashboard() {
                   const tipo = t === "receita" ? "RECEITA" : "DESPESA";
                   const dados = projetos
                     .filter((p) => p.tipo === tipo)
-                    .map((p) => ({ projeto: p.projeto, Orçamentado: p.orcado, Realizado: p.realizado }));
+                    .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado }));
                   const altura = Math.max(280, dados.length * 36 + 60);
                   return (
                     <TabsContent key={t} value={t} className="mt-4">
