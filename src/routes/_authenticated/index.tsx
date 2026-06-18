@@ -187,36 +187,80 @@ function Dashboard() {
           <CardDescription>Centros de custo acumulados até {MESES_LONGOS[mes - 1]}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Projeto</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Orçamentado</TableHead>
-                <TableHead className="text-right">Realizado</TableHead>
-                <TableHead className="text-right">Desvio</TableHead>
-                <TableHead className="text-right">Execução</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">A carregar…</TableCell></TableRow>
-              ) : projetos.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem dados para {ano}.</TableCell></TableRow>
-              ) : projetos.map((p) => (
-                <TableRow key={`${p.projeto}-${p.tipo}`}>
-                  <TableCell className="font-medium">{p.projeto}</TableCell>
-                  <TableCell>{p.tipo === "RECEITA" ? "Receita" : "Despesa"}</TableCell>
-                  <TableCell className="text-right">{currency.format(p.orcado)}</TableCell>
-                  <TableCell className="text-right">{currency.format(p.realizado)}</TableCell>
-                  <TableCell className={cn("text-right font-medium", p.desvio >= 0 ? "text-emerald-600" : "text-rose-600")}>
-                    {currency.format(p.desvio)}
-                  </TableCell>
-                  <TableCell className="text-right">{p.orcado === 0 ? "—" : percent(p.exec)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Tabs defaultValue="tabela">
+            <TabsList>
+              <TabsTrigger value="tabela">Tabela</TabsTrigger>
+              <TabsTrigger value="grafico">Gráfico</TabsTrigger>
+            </TabsList>
+            <TabsContent value="tabela" className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Projeto</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Orçamentado</TableHead>
+                    <TableHead className="text-right">Realizado</TableHead>
+                    <TableHead className="text-right">Desvio</TableHead>
+                    <TableHead className="text-right">Execução</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">A carregar…</TableCell></TableRow>
+                  ) : projetos.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem dados para {ano}.</TableCell></TableRow>
+                  ) : projetos.map((p) => (
+                    <TableRow key={`${p.projeto}-${p.tipo}`}>
+                      <TableCell className="font-medium">{p.projeto}</TableCell>
+                      <TableCell>{p.tipo === "RECEITA" ? "Receita" : "Despesa"}</TableCell>
+                      <TableCell className="text-right">{currency.format(p.orcado)}</TableCell>
+                      <TableCell className="text-right">{currency.format(p.realizado)}</TableCell>
+                      <TableCell className={cn("text-right font-medium", p.desvio >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                        {currency.format(p.desvio)}
+                      </TableCell>
+                      <TableCell className="text-right">{p.orcado === 0 ? "—" : percent(p.exec)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TabsContent>
+            <TabsContent value="grafico" className="mt-4">
+              <Tabs defaultValue="receita">
+                <TabsList>
+                  <TabsTrigger value="receita">Receita</TabsTrigger>
+                  <TabsTrigger value="despesa">Despesa</TabsTrigger>
+                </TabsList>
+                {(["receita", "despesa"] as const).map((t) => {
+                  const tipo = t === "receita" ? "RECEITA" : "DESPESA";
+                  const dados = projetos
+                    .filter((p) => p.tipo === tipo)
+                    .map((p) => ({ projeto: p.projeto, Orçamentado: p.orcado, Realizado: p.realizado }));
+                  const altura = Math.max(280, dados.length * 36 + 60);
+                  return (
+                    <TabsContent key={t} value={t} className="mt-4">
+                      {dados.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-12">Sem dados para apresentar.</p>
+                      ) : (
+                        <div style={{ height: altura }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dados} layout="vertical" margin={{ left: 20, right: 20 }}>
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                              <XAxis type="number" tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v as number)} />
+                              <YAxis type="category" dataKey="projeto" width={160} />
+                              <Tooltip formatter={(v: number) => currency.format(v)} />
+                              <Legend />
+                              <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" />
+                              <Bar dataKey="Realizado" fill={t === "receita" ? "hsl(160 70% 45%)" : "hsl(0 70% 55%)"} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
