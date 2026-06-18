@@ -7,6 +7,8 @@ const tipoSchema = z.enum(["RECEITA", "DESPESA"]);
 const linhaSchema = z.object({
   id: z.string().uuid().optional(),
   projeto: z.string().trim().min(1).max(120),
+  conta: z.string().trim().max(60).nullable().optional(),
+  descricao_conta: z.string().trim().max(240).nullable().optional(),
   m1: z.number().default(0),
   m2: z.number().default(0),
   m3: z.number().default(0),
@@ -19,6 +21,15 @@ const linhaSchema = z.object({
   m10: z.number().default(0),
   m11: z.number().default(0),
   m12: z.number().default(0),
+});
+
+const importLinhaSchema = z.object({
+  centro_custo: z.string().nullable(),
+  conta: z.string(),
+  descricao_conta: z.string().nullable(),
+  data: z.string(), // YYYY-MM-DD
+  debito: z.number(),
+  credito: z.number(),
 });
 
 export const listarVersoes = createServerFn({ method: "GET" })
