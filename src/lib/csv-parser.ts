@@ -145,8 +145,7 @@ export function parseCSV(text: string): ParseResult {
       textoLinha.includes("apuramento") ||
       textoLinha.includes("saldoinicial") ||
       textoLinha.includes("saldonoperiodo") ||
-      textoLinha.includes("saldoacumulado") ||
-      textoLinha.includes("total")
+      textoLinha.includes("saldoacumulado")
     ) {
       invalidas++;
       continue;
