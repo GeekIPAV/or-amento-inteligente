@@ -74,13 +74,42 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       despesaReal: realMensal.DESPESA[i],
     }));
 
+    const { data: txsProj, error: errP } = await context.supabase.rpc("resumo_transacoes_projeto", {
+      p_ano: ano,
+      p_mes: mes,
+    });
+    if (errP) throw new Error(errP.message);
+
+    type ProjRow = { projeto: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number };
+    const projMap = new Map<string, ProjRow>();
+    for (const p of porProjeto.values()) {
+      projMap.set(`${p.projeto}|${p.tipo}`, { ...p, realizado: 0 });
+    }
+    for (const t of (txsProj ?? []) as Array<{ projeto: string; receita: number; despesa: number }>) {
+      const projeto = String(t.projeto ?? "(Sem projeto)");
+      const receita = Number(t.receita ?? 0);
+      const despesa = Number(t.despesa ?? 0);
+      if (receita !== 0) {
+        const key = `${projeto}|RECEITA`;
+        const r = projMap.get(key);
+        if (r) r.realizado += receita;
+        else projMap.set(key, { projeto, tipo: "RECEITA", orcado: 0, realizado: receita });
+      }
+      if (despesa !== 0) {
+        const key = `${projeto}|DESPESA`;
+        const r = projMap.get(key);
+        if (r) r.realizado += despesa;
+        else projMap.set(key, { projeto, tipo: "DESPESA", orcado: 0, realizado: despesa });
+      }
+    }
+
     return {
       kpis: {
         receitaOrc, receitaReal,
         despesaOrc, despesaReal,
       },
       grafico,
-      projetos: Array.from(porProjeto.values()),
+      projetos: Array.from(projMap.values()),
     };
   });
 
