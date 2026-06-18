@@ -41,75 +41,42 @@ export type Database = {
       orcamentos: {
         Row: {
           ano: number
-          ativo: boolean
-          conta: string | null
           created_at: string
           created_by: string | null
-          descricao_conta: string | null
+          descricao: string | null
           id: string
-          m1: number
-          m10: number
-          m11: number
-          m12: number
-          m2: number
-          m3: number
-          m4: number
-          m5: number
-          m6: number
-          m7: number
-          m8: number
-          m9: number
+          mes: number
           projeto: string
+          rubrica: string | null
           tipo: Database["public"]["Enums"]["tipo_orcamento"]
-          versao: number
+          updated_at: string
+          valor: number
         }
         Insert: {
           ano: number
-          ativo?: boolean
-          conta?: string | null
           created_at?: string
           created_by?: string | null
-          descricao_conta?: string | null
+          descricao?: string | null
           id?: string
-          m1?: number
-          m10?: number
-          m11?: number
-          m12?: number
-          m2?: number
-          m3?: number
-          m4?: number
-          m5?: number
-          m6?: number
-          m7?: number
-          m8?: number
-          m9?: number
+          mes: number
           projeto: string
+          rubrica?: string | null
           tipo: Database["public"]["Enums"]["tipo_orcamento"]
-          versao?: number
+          updated_at?: string
+          valor?: number
         }
         Update: {
           ano?: number
-          ativo?: boolean
-          conta?: string | null
           created_at?: string
           created_by?: string | null
-          descricao_conta?: string | null
+          descricao?: string | null
           id?: string
-          m1?: number
-          m10?: number
-          m11?: number
-          m12?: number
-          m2?: number
-          m3?: number
-          m4?: number
-          m5?: number
-          m6?: number
-          m7?: number
-          m8?: number
-          m9?: number
+          mes?: number
           projeto?: string
+          rubrica?: string | null
           tipo?: Database["public"]["Enums"]["tipo_orcamento"]
-          versao?: number
+          updated_at?: string
+          valor?: number
         }
         Relationships: []
       }
