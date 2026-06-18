@@ -242,17 +242,25 @@ function Dashboard() {
               </Table>
             </TabsContent>
             <TabsContent value="grafico" className="mt-4">
-              <Tabs defaultValue="receita">
+              <Tabs defaultValue="ambos">
                 <TabsList>
+                  <TabsTrigger value="ambos">Ambos</TabsTrigger>
                   <TabsTrigger value="receita">Receita</TabsTrigger>
                   <TabsTrigger value="despesa">Despesa</TabsTrigger>
                 </TabsList>
-                {(["receita", "despesa"] as const).map((t) => {
-                  const tipo = t === "receita" ? "RECEITA" : "DESPESA";
-                  const dados = projetos
-                    .filter((p) => p.tipo === tipo)
-                    .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado }));
+                {(["ambos", "receita", "despesa"] as const).map((t) => {
+                  const dados = t === "ambos"
+                    ? projetos.map((p) => ({
+                        projeto: `${p.nome ?? p.projeto} (${p.tipo === "RECEITA" ? "R" : "D"})`,
+                        Orçamentado: p.orcado,
+                        Realizado: p.realizado,
+                        _tipo: p.tipo,
+                      }))
+                    : projetos
+                        .filter((p) => p.tipo === (t === "receita" ? "RECEITA" : "DESPESA"))
+                        .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado, _tipo: p.tipo }));
                   const altura = Math.max(280, dados.length * 36 + 60);
+                  const corReal = t === "despesa" ? "hsl(0 70% 55%)" : "hsl(160 70% 45%)";
                   return (
                     <TabsContent key={t} value={t} className="mt-4">
                       {dados.length === 0 ? (
@@ -263,11 +271,11 @@ function Dashboard() {
                             <BarChart data={dados} layout="vertical" margin={{ left: 20, right: 20 }}>
                               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                               <XAxis type="number" tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v as number)} />
-                              <YAxis type="category" dataKey="projeto" width={160} />
+                              <YAxis type="category" dataKey="projeto" width={180} />
                               <Tooltip formatter={(v: number) => currency.format(v)} />
                               <Legend />
                               <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" />
-                              <Bar dataKey="Realizado" fill={t === "receita" ? "hsl(160 70% 45%)" : "hsl(0 70% 55%)"} />
+                              <Bar dataKey="Realizado" fill={corReal} />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
