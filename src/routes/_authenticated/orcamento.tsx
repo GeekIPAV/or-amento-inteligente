@@ -87,16 +87,23 @@ function OrcamentoPage() {
 
   const linhas = (data ?? []) as Linha[];
 
+  const invalidarTudo = () => {
+    qc.invalidateQueries({ queryKey: ["orcamentos"] });
+    qc.invalidateQueries({ queryKey: ["resumo"] });
+    qc.invalidateQueries({ queryKey: ["anos"] });
+    qc.invalidateQueries({ queryKey: ["meses-disponiveis"] });
+  };
+
   const updateMut = useMutation({
     mutationFn: (vars: Linha) => updateFn({ data: vars }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["orcamentos"] }),
+    onSuccess: invalidarTudo,
     onError: (e: any) => toast.error(e?.message ?? "Erro ao guardar"),
   });
 
   const insertMut = useMutation({
     mutationFn: (vars: Omit<Linha, "id">) => insertFn({ data: vars }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["orcamentos"] });
+      invalidarTudo();
       toast.success("Linha adicionada");
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao adicionar"),
@@ -105,12 +112,13 @@ function OrcamentoPage() {
   const deleteMut = useMutation({
     mutationFn: (ids: string[]) => deleteFn({ data: { ids } }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["orcamentos"] });
+      invalidarTudo();
       setRowSelection({});
       toast.success("Linhas removidas");
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar"),
   });
+
 
   const saveCell = (row: Linha, patch: Partial<Linha>) => {
     const next = { ...row, ...patch } as Linha;
