@@ -66,9 +66,18 @@ function parseData(v: unknown): string | null {
   if (v == null) return null;
   const s = String(v).trim();
   if (!s) return null;
+  const validDate = (y: string, mo: string, d: string) => {
+    const year = Number(y);
+    const month = Number(mo);
+    const day = Number(d);
+    if (!Number.isInteger(year) || month < 1 || month > 12 || day < 1 || day > 31) return null;
+    const dt = new Date(Date.UTC(year, month - 1, day));
+    if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) return null;
+    return `${y}-${mo}-${d}`;
+  };
   // ISO
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  if (m) return validDate(m[1], m[2], m[3]);
   // DD/MM/YYYY ou DD-MM-YYYY
   m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
   if (m) {
@@ -76,7 +85,7 @@ function parseData(v: unknown): string | null {
     const mo = m[2].padStart(2, "0");
     let y = m[3];
     if (y.length === 2) y = (parseInt(y, 10) > 50 ? "19" : "20") + y;
-    return `${y}-${mo}-${d}`;
+    return validDate(y, mo, d);
   }
   return null;
 }
@@ -127,14 +136,23 @@ export function parseCSV(text: string): ParseResult {
     const rawData = cols.data ? String(row[cols.data] ?? "").trim() : "";
     const doc = cols.num_documento ? String(row[cols.num_documento] ?? "").trim() : "";
     const mov = cols.movimento ? String(row[cols.movimento] ?? "").trim() : "";
+    const descricao = cols.descricao_conta ? String(row[cols.descricao_conta] ?? "").trim() : "";
+    const textoLinha = norm([conta, descricao, doc, mov].join(" "));
 
     // 2. Ignorar Aberturas (mês 00), Fechos/Apuramentos (mês 14) e documentos de apuramento
     if (
-      rawData.includes(".00.") ||
-      rawData.includes(".14.") ||
-      doc.toLowerCase().includes("apuramento") ||
-      mov.toLowerCase().includes("apuramento")
+      /[\/\-.](00|14)[\/\-.]/.test(rawData) ||
+      textoLinha.includes("apuramento") ||
+      textoLinha.includes("saldoinicial") ||
+      textoLinha.includes("saldonoperiodo") ||
+      textoLinha.includes("saldoacumulado")
     ) {
+      invalidas++;
+      continue;
+    }
+
+    const dataIso = cols.data ? parseData(row[cols.data]) : null;
+    if (rawData && !dataIso) {
       invalidas++;
       continue;
     }
@@ -151,7 +169,7 @@ export function parseCSV(text: string): ParseResult {
     linhas.push({
       conta,
       descricao_conta: cols.descricao_conta ? String(row[cols.descricao_conta] ?? "").trim() || null : null,
-      data: cols.data ? parseData(row[cols.data]) : null,
+      data: dataIso,
       num_documento: cols.num_documento ? String(row[cols.num_documento] ?? "").trim() || null : null,
       diario: cols.diario ? String(row[cols.diario] ?? "").trim() || null : null,
       movimento: cols.movimento ? String(row[cols.movimento] ?? "").trim() || null : null,
