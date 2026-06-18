@@ -94,8 +94,12 @@ function Dashboard() {
   const projetos = useMemo(() => {
     if (!data) return [];
     return data.projetos
-      .map((p) => ({ ...p, desvio: p.orcado /* sem realizado por projeto */ }))
-      .sort((a, b) => b.orcado - a.orcado);
+      .map((p: any) => {
+        const desvio = p.tipo === "RECEITA" ? p.realizado - p.orcado : p.orcado - p.realizado;
+        const exec = p.orcado === 0 ? 0 : p.realizado / p.orcado;
+        return { ...p, desvio, exec };
+      })
+      .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
   }, [data]);
 
   const anosLista = anos.length ? anos : [ano];
