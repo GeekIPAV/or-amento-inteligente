@@ -154,11 +154,27 @@ function Dashboard() {
           <CardDescription>Visão mensal completa do ano {ano}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="receita">
+          <Tabs defaultValue="ambos">
             <TabsList>
+              <TabsTrigger value="ambos">Ambos</TabsTrigger>
               <TabsTrigger value="receita">Receita</TabsTrigger>
               <TabsTrigger value="despesa">Despesa</TabsTrigger>
             </TabsList>
+            <TabsContent value="ambos" className="h-80 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data?.grafico ?? []}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="mes" tickFormatter={(m) => MESES_CURTOS[m - 1]} />
+                  <YAxis tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v)} />
+                  <Tooltip formatter={(v: number) => currency.format(v)} labelFormatter={(m) => MESES_LONGOS[(m as number) - 1]} />
+                  <Legend />
+                  <Bar dataKey="receitaOrc" name="Receita Orçada" fill="hsl(160 70% 75%)" />
+                  <Bar dataKey="receitaReal" name="Receita Realizada" fill="hsl(160 70% 45%)" />
+                  <Bar dataKey="despesaOrc" name="Despesa Orçada" fill="hsl(0 70% 80%)" />
+                  <Bar dataKey="despesaReal" name="Despesa Realizada" fill="hsl(0 70% 55%)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </TabsContent>
             {(["receita", "despesa"] as const).map((t) => (
               <TabsContent key={t} value={t} className="h-80 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
