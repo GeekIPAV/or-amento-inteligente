@@ -218,7 +218,7 @@ Sempre que precisares de números reais, usa as ferramentas. Responde com valore
         return result.toUIMessageStreamResponse({
           originalMessages: body.messages,
           onFinish: async ({ messages }) => {
-            const assistant = messages.findLast?.((m) => m.role === "assistant");
+            const assistant = [...messages].reverse().find((m: UIMessage) => m.role === "assistant");
             if (!assistant) return;
             const { data: existing } = await supabase
               .from("chat_messages")
