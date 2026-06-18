@@ -7,6 +7,8 @@ const tipoSchema = z.enum(["RECEITA", "DESPESA"]);
 const linhaSchema = z.object({
   id: z.string().uuid().optional(),
   projeto: z.string().trim().min(1).max(120),
+  conta: z.string().trim().max(60).nullable().optional(),
+  descricao_conta: z.string().trim().max(240).nullable().optional(),
   m1: z.number().default(0),
   m2: z.number().default(0),
   m3: z.number().default(0),
@@ -19,6 +21,15 @@ const linhaSchema = z.object({
   m10: z.number().default(0),
   m11: z.number().default(0),
   m12: z.number().default(0),
+});
+
+const importLinhaSchema = z.object({
+  centro_custo: z.string().nullable(),
+  conta: z.string(),
+  descricao_conta: z.string().nullable(),
+  data: z.string(), // YYYY-MM-DD
+  debito: z.number(),
+  credito: z.number(),
 });
 
 export const listarVersoes = createServerFn({ method: "GET" })
@@ -117,6 +128,8 @@ export const guardarLinhas = createServerFn({ method: "POST" })
     for (const l of data.linhas) {
       const payload = {
         projeto: l.projeto,
+        conta: l.conta ?? null,
+        descricao_conta: l.descricao_conta ?? null,
         ano: data.ano,
         tipo: data.tipo,
         versao: data.versao,
@@ -168,6 +181,8 @@ export const criarNovaVersao = createServerFn({ method: "POST" })
 
       const novas = atual.map((r) => ({
         projeto: r.projeto,
+        conta: r.conta ?? null,
+        descricao_conta: r.descricao_conta ?? null,
         ano: r.ano,
         tipo: r.tipo,
         versao: novaVersao,
@@ -180,6 +195,123 @@ export const criarNovaVersao = createServerFn({ method: "POST" })
       if (errIns) throw new Error(errIns.message);
     }
     return { versao: novaVersao };
+  });
+
+export const importarExtratoOrcamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (d: { ano: number; linhas: z.input<typeof importLinhaSchema>[] }) =>
+      z.object({
+        ano: z.number().int(),
+        linhas: z.array(importLinhaSchema),
+      }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    type Agg = {
+      projeto: string;
+      conta: string;
+      descricao_conta: string | null;
+      tipo: "RECEITA" | "DESPESA";
+      meses: number[]; // 12 posições
+    };
+    const buckets = new Map<string, Agg>();
+
+    for (const l of data.linhas) {
+      const conta = (l.conta ?? "").trim();
+      if (!conta) continue;
+      const first = conta[0];
+      const tipo: "RECEITA" | "DESPESA" | null =
+        first === "7" ? "RECEITA" : first === "6" ? "DESPESA" : null;
+      if (!tipo) continue;
+
+      const m = /^(\d{4})-(\d{2})-\d{2}/.exec(l.data);
+      if (!m) continue;
+      const year = Number(m[1]);
+      const mes = Number(m[2]);
+      if (year !== data.ano || mes < 1 || mes > 12) continue;
+
+      const valor =
+        tipo === "RECEITA"
+          ? Number(l.credito) - Number(l.debito)
+          : Number(l.debito) - Number(l.credito);
+      if (!Number.isFinite(valor) || valor === 0) continue;
+
+      const projeto = (l.centro_custo ?? "").trim() || "(Sem projeto)";
+      const key = `${projeto}||${conta}||${tipo}`;
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = {
+          projeto,
+          conta,
+          descricao_conta: l.descricao_conta?.trim() || null,
+          tipo,
+          meses: new Array(12).fill(0),
+        };
+        buckets.set(key, bucket);
+      }
+      bucket.meses[mes - 1] += valor;
+    }
+
+    const aggregated = Array.from(buckets.values());
+    if (aggregated.length === 0) {
+      throw new Error("Nenhuma linha válida encontrada (verifique contas 6xx/7xx e datas).");
+    }
+
+    const result: Record<"RECEITA" | "DESPESA", { versao: number; linhas: number }> = {
+      RECEITA: { versao: 0, linhas: 0 },
+      DESPESA: { versao: 0, linhas: 0 },
+    };
+
+    for (const tipo of ["RECEITA", "DESPESA"] as const) {
+      const linhas = aggregated.filter((a) => a.tipo === tipo);
+      if (linhas.length === 0) continue;
+
+      // Próxima versão
+      const { data: existentes, error: errSel } = await context.supabase
+        .from("orcamentos")
+        .select("versao")
+        .eq("ano", data.ano)
+        .eq("tipo", tipo);
+      if (errSel) throw new Error(errSel.message);
+      const maxVersao = (existentes ?? []).reduce((m, r) => Math.max(m, r.versao), 0);
+      const novaVersao = maxVersao + 1;
+
+      // Desativa anteriores
+      const { error: errUpd } = await context.supabase
+        .from("orcamentos")
+        .update({ ativo: false })
+        .eq("ano", data.ano)
+        .eq("tipo", tipo)
+        .eq("ativo", true);
+      if (errUpd) throw new Error(errUpd.message);
+
+      const payload = linhas.map((l) => ({
+        projeto: l.projeto,
+        conta: l.conta,
+        descricao_conta: l.descricao_conta,
+        ano: data.ano,
+        tipo,
+        versao: novaVersao,
+        ativo: true,
+        m1: l.meses[0], m2: l.meses[1], m3: l.meses[2], m4: l.meses[3],
+        m5: l.meses[4], m6: l.meses[5], m7: l.meses[6], m8: l.meses[7],
+        m9: l.meses[8], m10: l.meses[9], m11: l.meses[10], m12: l.meses[11],
+        created_by: context.userId,
+      }));
+
+      // Insere em lotes para evitar payloads gigantes
+      const BATCH = 500;
+      for (let i = 0; i < payload.length; i += BATCH) {
+        const { error } = await context.supabase
+          .from("orcamentos")
+          .insert(payload.slice(i, i + BATCH));
+        if (error) throw new Error(error.message);
+      }
+
+      result[tipo] = { versao: novaVersao, linhas: payload.length };
+    }
+
+    return result;
   });
 
 export const adicionarProjeto = createServerFn({ method: "POST" })

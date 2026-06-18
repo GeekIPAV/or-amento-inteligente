@@ -6,7 +6,9 @@ import { z } from "zod";
 import { toast } from "sonner";
 import {
   listarAnos, listarVersoes, carregarOrcamento, guardarLinhas, criarNovaVersao, adicionarProjeto,
+  importarExtratoOrcamento,
 } from "@/lib/orcamentos.functions";
+import { parseCSV } from "@/lib/csv-parser";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { currency, MESES_CURTOS } from "@/lib/format";
-import { Plus, Save, GitBranch, Trash2 } from "lucide-react";
+import { Plus, Save, GitBranch, Trash2, Upload } from "lucide-react";
+import { useRef } from "react";
 
 const searchSchema = z.object({
   ano: z.number().int().optional(),
@@ -36,6 +39,8 @@ type Mes = (typeof meses)[number];
 interface Linha {
   id?: string;
   projeto: string;
+  conta?: string | null;
+  descricao_conta?: string | null;
   m1: number; m2: number; m3: number; m4: number; m5: number; m6: number;
   m7: number; m8: number; m9: number; m10: number; m11: number; m12: number;
   dirty?: boolean;
@@ -55,6 +60,9 @@ function OrcamentoPage() {
   const guardarFn = useServerFn(guardarLinhas);
   const novaVersaoFn = useServerFn(criarNovaVersao);
   const addProjetoFn = useServerFn(adicionarProjeto);
+  const importarFn = useServerFn(importarExtratoOrcamento);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importando, setImportando] = useState(false);
 
   const { data: anos = [] } = useQuery({ queryKey: ["orc-anos"], queryFn: () => anosFn() });
   const { data: versoes = [] } = useQuery({
@@ -82,6 +90,8 @@ function OrcamentoPage() {
       (rows ?? []).map((r: any) => ({
         id: r.id,
         projeto: r.projeto,
+        conta: r.conta ?? null,
+        descricao_conta: r.descricao_conta ?? null,
         m1: Number(r.m1), m2: Number(r.m2), m3: Number(r.m3), m4: Number(r.m4),
         m5: Number(r.m5), m6: Number(r.m6), m7: Number(r.m7), m8: Number(r.m8),
         m9: Number(r.m9), m10: Number(r.m10), m11: Number(r.m11), m12: Number(r.m12),
@@ -93,11 +103,13 @@ function OrcamentoPage() {
   const set = (patch: Partial<{ ano: number; tipo: "RECEITA" | "DESPESA"; versao: number }>) =>
     navigate({ search: (prev: any) => ({ ...prev, ...patch }) });
 
-  const updateCell = (idx: number, field: "projeto" | Mes, value: string) => {
+  const updateCell = (idx: number, field: "projeto" | "conta" | "descricao_conta" | Mes, value: string) => {
     setLinhas((prev) => {
       const next = [...prev];
       const l = { ...next[idx], dirty: true };
       if (field === "projeto") l.projeto = value;
+      else if (field === "conta") l.conta = value;
+      else if (field === "descricao_conta") l.descricao_conta = value;
       else (l as any)[field] = Number(value.replace(",", ".")) || 0;
       next[idx] = l;
       return next;
@@ -126,6 +138,8 @@ function OrcamentoPage() {
           ano, tipo, versao,
           linhas: dirty.map((l) => ({
             id: l.id, projeto: l.projeto,
+            conta: l.conta ?? null,
+            descricao_conta: l.descricao_conta ?? null,
             m1: l.m1, m2: l.m2, m3: l.m3, m4: l.m4, m5: l.m5, m6: l.m6,
             m7: l.m7, m8: l.m8, m9: l.m9, m10: l.m10, m11: l.m11, m12: l.m12,
           })),
@@ -137,6 +151,45 @@ function OrcamentoPage() {
       qc.invalidateQueries({ queryKey: ["resumo"] });
     } catch (e: any) {
       toast.error(e.message ?? "Erro a guardar");
+    }
+  };
+
+  const importarExtrato = async (file: File) => {
+    setImportando(true);
+    try {
+      const text = await file.text();
+      const parsed = parseCSV(text);
+      if (parsed.linhas.length === 0) {
+        toast.error("Nenhuma linha válida no ficheiro.");
+        return;
+      }
+      const r = await importarFn({
+        data: {
+          ano,
+          linhas: parsed.linhas.map((l) => ({
+            centro_custo: l.centro_custo,
+            conta: l.conta ?? "",
+            descricao_conta: l.descricao_conta,
+            data: l.data ?? "",
+            debito: l.debito,
+            credito: l.credito,
+          })),
+        },
+      });
+      const partes: string[] = [];
+      if (r.RECEITA.linhas) partes.push(`Receita v${r.RECEITA.versao} (${r.RECEITA.linhas} linhas)`);
+      if (r.DESPESA.linhas) partes.push(`Despesa v${r.DESPESA.versao} (${r.DESPESA.linhas} linhas)`);
+      toast.success(`Importado: ${partes.join(" · ")}`);
+      qc.invalidateQueries({ queryKey: ["orc-versoes"] });
+      qc.invalidateQueries({ queryKey: ["orc-linhas"] });
+      qc.invalidateQueries({ queryKey: ["orc-anos"] });
+      qc.invalidateQueries({ queryKey: ["resumo"] });
+      set({ versao: undefined });
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro a importar");
+    } finally {
+      setImportando(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -213,6 +266,23 @@ function OrcamentoPage() {
           <Button variant="outline" onClick={criarVersao} disabled={!isAtiva || versoes.length === 0}>
             <GitBranch className="size-4" /> Criar Nova Versão
           </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importarExtrato(f);
+            }}
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileRef.current?.click()}
+            disabled={importando}
+          >
+            <Upload className="size-4" /> {importando ? "A importar…" : "Importar Extrato"}
+          </Button>
           <Button onClick={guardar} disabled={!isAtiva}>
             <Save className="size-4" /> Guardar
           </Button>
@@ -259,6 +329,7 @@ function OrcamentoPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[180px] sticky left-0 bg-card">Projeto</TableHead>
+                  <TableHead className="min-w-[200px]">Conta</TableHead>
                   {MESES_CURTOS.map((m) => <TableHead key={m} className="text-right">{m}</TableHead>)}
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="w-10"></TableHead>
@@ -266,9 +337,9 @@ function OrcamentoPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground">A carregar…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={16} className="text-center text-muted-foreground">A carregar…</TableCell></TableRow>
                 ) : linhas.length === 0 ? (
-                  <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground">Sem projetos. Use "Adicionar Projeto".</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={16} className="text-center text-muted-foreground">Sem linhas. Use "Adicionar Projeto" ou "Importar Extrato".</TableCell></TableRow>
                 ) : linhas.map((l, i) => (
                   <TableRow key={l.id ?? `new-${i}`}>
                     <TableCell className="sticky left-0 bg-card">
@@ -278,6 +349,24 @@ function OrcamentoPage() {
                         disabled={!isAtiva}
                         className="h-8"
                       />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <div className="flex flex-col gap-1">
+                        <Input
+                          value={l.conta ?? ""}
+                          onChange={(e) => updateCell(i, "conta", e.target.value)}
+                          disabled={!isAtiva}
+                          className="h-7 text-xs"
+                          placeholder="Conta"
+                        />
+                        <Input
+                          value={l.descricao_conta ?? ""}
+                          onChange={(e) => updateCell(i, "descricao_conta", e.target.value)}
+                          disabled={!isAtiva}
+                          className="h-7 text-xs"
+                          placeholder="Descrição"
+                        />
+                      </div>
                     </TableCell>
                     {meses.map((m) => (
                       <TableCell key={m} className="p-1">
@@ -306,6 +395,7 @@ function OrcamentoPage() {
                 <tfoot>
                   <TableRow>
                     <TableCell className="sticky left-0 bg-muted/40 font-semibold">Total</TableCell>
+                    <TableCell className="bg-muted/40"></TableCell>
                     {meses.map((m) => (
                       <TableCell key={m} className="text-right font-semibold bg-muted/40">
                         {currency.format(totalColuna(m))}
