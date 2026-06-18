@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,9 @@ const nav = [
   { to: "/movimentos", label: "Movimentos", icon: TableIcon },
   { to: "/centros-custo", label: "Centros de Custo", icon: FolderKanban },
   { to: "/importar-extratos", label: "Importar Extratos", icon: Upload },
+  { to: "/chat", label: "Assistente", icon: MessageSquare },
 ] as const;
+
 
 
 export function AppShell() {
