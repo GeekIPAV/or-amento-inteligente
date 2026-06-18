@@ -354,3 +354,65 @@ export const adicionarProjeto = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const importarOrcamentoAgregado = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (d: { linhas: z.input<typeof aggLinhaSchema>[] }) =>
+      z.object({ linhas: z.array(aggLinhaSchema).min(1) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    // Agrupa por (ano, tipo) para criar uma nova versão por combinação
+    const groups = new Map<string, { ano: number; tipo: "RECEITA" | "DESPESA"; rows: typeof data.linhas }>();
+    for (const l of data.linhas) {
+      const key = `${l.ano}||${l.tipo}`;
+      let g = groups.get(key);
+      if (!g) { g = { ano: l.ano, tipo: l.tipo, rows: [] }; groups.set(key, g); }
+      g.rows.push(l);
+    }
+
+    const result: { ano: number; tipo: "RECEITA" | "DESPESA"; versao: number; linhas: number }[] = [];
+
+    for (const g of groups.values()) {
+      const { data: existentes, error: errSel } = await context.supabase
+        .from("orcamentos")
+        .select("versao")
+        .eq("ano", g.ano)
+        .eq("tipo", g.tipo);
+      if (errSel) throw new Error(errSel.message);
+      const maxVersao = (existentes ?? []).reduce((m, r) => Math.max(m, r.versao), 0);
+      const novaVersao = maxVersao + 1;
+
+      const { error: errUpd } = await context.supabase
+        .from("orcamentos")
+        .update({ ativo: false })
+        .eq("ano", g.ano)
+        .eq("tipo", g.tipo)
+        .eq("ativo", true);
+      if (errUpd) throw new Error(errUpd.message);
+
+      const payload = g.rows.map((l) => ({
+        projeto: l.projeto,
+        conta: l.conta,
+        descricao_conta: l.descricao_conta,
+        ano: g.ano,
+        tipo: g.tipo,
+        versao: novaVersao,
+        ativo: true,
+        m1: l.meses[0], m2: l.meses[1], m3: l.meses[2], m4: l.meses[3],
+        m5: l.meses[4], m6: l.meses[5], m7: l.meses[6], m8: l.meses[7],
+        m9: l.meses[8], m10: l.meses[9], m11: l.meses[10], m12: l.meses[11],
+        created_by: context.userId,
+      }));
+
+      const BATCH = 500;
+      for (let i = 0; i < payload.length; i += BATCH) {
+        const { error } = await context.supabase
+          .from("orcamentos")
+          .insert(payload.slice(i, i + BATCH));
+        if (error) throw new Error(error.message);
+      }
+      result.push({ ano: g.ano, tipo: g.tipo, versao: novaVersao, linhas: payload.length });
+    }
+    return result;
+  });
