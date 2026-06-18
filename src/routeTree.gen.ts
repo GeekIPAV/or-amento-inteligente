@@ -18,6 +18,7 @@ import { Route as AuthenticatedMovimentosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedImportarExtratosRouteImport } from './routes/_authenticated/importar-extratos'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCentrosCustoRouteImport } from './routes/_authenticated/centros-custo'
+import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -65,38 +66,45 @@ const AuthenticatedCentrosCustoRoute =
     path: '/centros-custo',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedChatIndexRoute = AuthenticatedChatIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedChatRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/centros-custo': typeof AuthenticatedCentrosCustoRoute
-  '/chat': typeof AuthenticatedChatRoute
+  '/chat': typeof AuthenticatedChatRouteWithChildren
   '/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
   '/api/chat': typeof ApiChatRoute
+  '/chat/': typeof AuthenticatedChatIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/centros-custo': typeof AuthenticatedCentrosCustoRoute
-  '/chat': typeof AuthenticatedChatRoute
   '/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
+  '/chat': typeof AuthenticatedChatIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/centros-custo': typeof AuthenticatedCentrosCustoRoute
-  '/_authenticated/chat': typeof AuthenticatedChatRoute
+  '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
   '/_authenticated/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/_authenticated/movimentos': typeof AuthenticatedMovimentosRoute
   '/_authenticated/orcamento': typeof AuthenticatedOrcamentoRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,16 +117,17 @@ export interface FileRouteTypes {
     | '/movimentos'
     | '/orcamento'
     | '/api/chat'
+    | '/chat/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/centros-custo'
-    | '/chat'
     | '/importar-extratos'
     | '/movimentos'
     | '/orcamento'
     | '/api/chat'
     | '/'
+    | '/chat'
   id:
     | '__root__'
     | '/_authenticated'
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orcamento'
     | '/api/chat'
     | '/_authenticated/'
+    | '/_authenticated/chat/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -203,12 +213,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCentrosCustoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/chat/': {
+      id: '/_authenticated/chat/'
+      path: '/'
+      fullPath: '/chat/'
+      preLoaderRoute: typeof AuthenticatedChatIndexRouteImport
+      parentRoute: typeof AuthenticatedChatRoute
+    }
   }
 }
 
+interface AuthenticatedChatRouteChildren {
+  AuthenticatedChatIndexRoute: typeof AuthenticatedChatIndexRoute
+}
+
+const AuthenticatedChatRouteChildren: AuthenticatedChatRouteChildren = {
+  AuthenticatedChatIndexRoute: AuthenticatedChatIndexRoute,
+}
+
+const AuthenticatedChatRouteWithChildren =
+  AuthenticatedChatRoute._addFileChildren(AuthenticatedChatRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCentrosCustoRoute: typeof AuthenticatedCentrosCustoRoute
-  AuthenticatedChatRoute: typeof AuthenticatedChatRoute
+  AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
   AuthenticatedImportarExtratosRoute: typeof AuthenticatedImportarExtratosRoute
   AuthenticatedMovimentosRoute: typeof AuthenticatedMovimentosRoute
   AuthenticatedOrcamentoRoute: typeof AuthenticatedOrcamentoRoute
@@ -217,7 +245,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCentrosCustoRoute: AuthenticatedCentrosCustoRoute,
-  AuthenticatedChatRoute: AuthenticatedChatRoute,
+  AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
   AuthenticatedImportarExtratosRoute: AuthenticatedImportarExtratosRoute,
   AuthenticatedMovimentosRoute: AuthenticatedMovimentosRoute,
   AuthenticatedOrcamentoRoute: AuthenticatedOrcamentoRoute,
