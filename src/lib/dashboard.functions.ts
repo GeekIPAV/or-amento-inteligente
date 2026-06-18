@@ -10,15 +10,12 @@ export const resumoDashboard = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { ano, mes } = data;
 
-    // Orçamentos ativos do ano
+    // Orçamentos do ano
     const { data: orcs, error: errO } = await context.supabase
       .from("orcamentos")
-      .select("*")
-      .eq("ano", ano)
-      .eq("ativo", true);
+      .select("projeto, tipo, mes, valor")
+      .eq("ano", ano);
     if (errO) throw new Error(errO.message);
-
-    const meses = ["m1","m2","m3","m4","m5","m6","m7","m8","m9","m10","m11","m12"] as const;
 
     const orcMensal = {
       RECEITA: Array(12).fill(0) as number[],
@@ -27,18 +24,17 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     const porProjeto = new Map<string, { projeto: string; tipo: "RECEITA" | "DESPESA"; orcado: number }>();
 
     for (const o of orcs ?? []) {
-      const arr = orcMensal[o.tipo as "RECEITA" | "DESPESA"];
-      let totalProj = 0;
-      meses.forEach((m, i) => {
-        const v = Number((o as any)[m] ?? 0);
-        arr[i] += v;
-        if (i < mes) totalProj += v;
-      });
-      const key = `${o.projeto}|${o.tipo}`;
+      const tipo = o.tipo as "RECEITA" | "DESPESA";
+      const m = Number(o.mes);
+      const v = Number(o.valor ?? 0);
+      if (m >= 1 && m <= 12) orcMensal[tipo][m - 1] += v;
+      const key = `${o.projeto}|${tipo}`;
       const existing = porProjeto.get(key);
-      if (existing) existing.orcado += totalProj;
-      else porProjeto.set(key, { projeto: o.projeto, tipo: o.tipo, orcado: totalProj });
+      const contribuiAcumulado = m <= mes ? v : 0;
+      if (existing) existing.orcado += contribuiAcumulado;
+      else porProjeto.set(key, { projeto: o.projeto, tipo, orcado: contribuiAcumulado });
     }
+
 
     // Transações do ano agregadas na base de dados, para não truncar anos com muitos movimentos.
     const { data: txs, error: errT } = await context.supabase.rpc("resumo_transacoes_mensal", {
