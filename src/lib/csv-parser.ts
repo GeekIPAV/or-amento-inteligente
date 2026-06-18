@@ -230,8 +230,6 @@ export function parseOrcamentoCSV(text: string): ParseOrcamentoResult {
   if (tabs > semicolons && tabs > commas) delimiter = "\t";
   else if (semicolons > commas) delimiter = ";";
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const Papa = require("papaparse");
   const result = Papa.parse<Record<string, string>>(text, {
     header: true,
     skipEmptyLines: true,
