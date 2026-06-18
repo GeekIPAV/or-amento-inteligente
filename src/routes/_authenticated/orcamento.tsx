@@ -60,6 +60,9 @@ function OrcamentoPage() {
   const guardarFn = useServerFn(guardarLinhas);
   const novaVersaoFn = useServerFn(criarNovaVersao);
   const addProjetoFn = useServerFn(adicionarProjeto);
+  const importarFn = useServerFn(importarExtratoOrcamento);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importando, setImportando] = useState(false);
 
   const { data: anos = [] } = useQuery({ queryKey: ["orc-anos"], queryFn: () => anosFn() });
   const { data: versoes = [] } = useQuery({
