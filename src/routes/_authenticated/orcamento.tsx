@@ -61,6 +61,7 @@ function OrcamentoPage() {
   const novaVersaoFn = useServerFn(criarNovaVersao);
   const addProjetoFn = useServerFn(adicionarProjeto);
   const importarFn = useServerFn(importarExtratoOrcamento);
+  const importarAggFn = useServerFn(importarOrcamentoAgregado);
   const fileRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
 
