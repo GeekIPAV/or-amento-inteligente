@@ -187,3 +187,106 @@ export function parseCSV(text: string): ParseResult {
     cabecalhos: headers,
   };
 }
+
+// ===== Parser de Orçamento (formato pré-agregado por mês) =====
+export interface OrcamentoLinhaAgg {
+  ano: number;
+  projeto: string;
+  conta: string | null;
+  descricao_conta: string | null;
+  tipo: "RECEITA" | "DESPESA";
+  meses: number[]; // 12 posições
+}
+
+export interface ParseOrcamentoResult {
+  linhas: OrcamentoLinhaAgg[];
+  invalidas: number;
+  total: number;
+  anos: number[];
+}
+
+const MESES_PT: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+  janeiro: 1, fevereiro: 2, marco: 3, março: 3, abril: 4, maio: 5, junho: 6,
+  julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+};
+
+const MAPA_ORC = {
+  centro_custo: ["centrodecustos", "centrodecusto", "centrocusto", "ccusto", "cc", "projeto"],
+  descricao: ["descricao", "descrição", "designacao", "rubricadetalhe"],
+  mes: ["mes", "mês", "month"],
+  ano: ["ano", "year"],
+  valor: ["valor", "valordoseur", "valoreur", "montante"],
+  rubrica: ["rubrica", "categoria", "conta"],
+};
+
+export function parseOrcamentoCSV(text: string): ParseOrcamentoResult {
+  const sample = text.slice(0, 2000);
+  const semicolons = (sample.match(/;/g) || []).length;
+  const commas = (sample.match(/,/g) || []).length;
+  const tabs = (sample.match(/\t/g) || []).length;
+  let delimiter = ",";
+  if (tabs > semicolons && tabs > commas) delimiter = "\t";
+  else if (semicolons > commas) delimiter = ";";
+
+  const result = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+    delimiter,
+  });
+  const headers: string[] = result.meta.fields ?? [];
+  const find = (variantes: string[]) =>
+    headers.find((h) => variantes.includes(norm(h))) ?? null;
+
+  const cols = {
+    cc: find(MAPA_ORC.centro_custo),
+    desc: find(MAPA_ORC.descricao),
+    mes: find(MAPA_ORC.mes),
+    ano: find(MAPA_ORC.ano),
+    valor: find(MAPA_ORC.valor),
+    rubrica: find(MAPA_ORC.rubrica),
+  };
+
+  if (!cols.cc || !cols.mes || !cols.ano || !cols.valor) {
+    return { linhas: [], invalidas: 0, total: result.data.length, anos: [] };
+  }
+
+  const buckets = new Map<string, OrcamentoLinhaAgg>();
+  let invalidas = 0;
+  const anos = new Set<number>();
+
+  for (const row of result.data) {
+    if (!row || typeof row !== "object") continue;
+    const cc = String(row[cols.cc] ?? "").trim() || "(Sem projeto)";
+    const mesRaw = norm(String(row[cols.mes] ?? "")).slice(0, 10);
+    const ano = parseInt(String(row[cols.ano] ?? "").trim(), 10);
+    const mes = MESES_PT[mesRaw] ?? MESES_PT[mesRaw.slice(0, 3)] ?? null;
+    const valor = parseNumber(row[cols.valor]);
+    if (!Number.isFinite(ano) || ano < 1900 || !mes || valor === 0) {
+      invalidas++;
+      continue;
+    }
+    anos.add(ano);
+    const rubrica = cols.rubrica ? String(row[cols.rubrica] ?? "").trim() || null : null;
+    const desc = cols.desc ? String(row[cols.desc] ?? "").trim() || null : null;
+    const tipo: "RECEITA" | "DESPESA" = valor < 0 ? "DESPESA" : "RECEITA";
+    const key = `${ano}||${cc}||${rubrica ?? ""}||${desc ?? ""}||${tipo}`;
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = {
+        ano, projeto: cc, conta: rubrica, descricao_conta: desc, tipo,
+        meses: new Array(12).fill(0),
+      };
+      buckets.set(key, bucket);
+    }
+    bucket.meses[mes - 1] += Math.abs(valor);
+  }
+
+  return {
+    linhas: Array.from(buckets.values()),
+    invalidas,
+    total: result.data.length,
+    anos: Array.from(anos).sort(),
+  };
+}
