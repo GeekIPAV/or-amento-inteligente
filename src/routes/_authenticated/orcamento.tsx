@@ -6,7 +6,9 @@ import { z } from "zod";
 import { toast } from "sonner";
 import {
   listarAnos, listarVersoes, carregarOrcamento, guardarLinhas, criarNovaVersao, adicionarProjeto,
+  importarExtratoOrcamento,
 } from "@/lib/orcamentos.functions";
+import { parseCSV } from "@/lib/csv-parser";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { currency, MESES_CURTOS } from "@/lib/format";
-import { Plus, Save, GitBranch, Trash2 } from "lucide-react";
+import { Plus, Save, GitBranch, Trash2, Upload } from "lucide-react";
+import { useRef } from "react";
 
 const searchSchema = z.object({
   ano: z.number().int().optional(),
