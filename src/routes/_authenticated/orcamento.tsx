@@ -90,6 +90,8 @@ function OrcamentoPage() {
       (rows ?? []).map((r: any) => ({
         id: r.id,
         projeto: r.projeto,
+        conta: r.conta ?? null,
+        descricao_conta: r.descricao_conta ?? null,
         m1: Number(r.m1), m2: Number(r.m2), m3: Number(r.m3), m4: Number(r.m4),
         m5: Number(r.m5), m6: Number(r.m6), m7: Number(r.m7), m8: Number(r.m8),
         m9: Number(r.m9), m10: Number(r.m10), m11: Number(r.m11), m12: Number(r.m12),
