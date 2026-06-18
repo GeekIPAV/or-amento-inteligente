@@ -75,7 +75,7 @@ function OrcamentoPage() {
   const versao = search.versao ?? versaoAtiva;
   const isAtiva = versao === versaoAtiva;
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows, isLoading } = useQuery({
     queryKey: ["orc-linhas", ano, tipo, versao],
     queryFn: () => carregarFn({ data: { ano, tipo, versao } }),
     enabled: versao !== undefined || (versoes.length === 0),
@@ -87,8 +87,9 @@ function OrcamentoPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
+    if (!rows) return;
     setLinhas(
-      (rows ?? []).map((r: any) => ({
+      rows.map((r: any) => ({
         id: r.id,
         projeto: r.projeto,
         conta: r.conta ?? null,
