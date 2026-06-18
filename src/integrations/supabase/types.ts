@@ -179,6 +179,15 @@ export type Database = {
           receita: number
         }[]
       }
+      resumo_transacoes_projeto: {
+        Args: { p_ano: number; p_mes: number }
+        Returns: {
+          despesa: number
+          linhas: number
+          projeto: string
+          receita: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
