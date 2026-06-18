@@ -159,28 +159,39 @@ function OrcamentoPage() {
     setImportando(true);
     try {
       const text = await file.text();
-      const parsed = parseCSV(text);
-      if (parsed.linhas.length === 0) {
-        toast.error("Nenhuma linha válida no ficheiro.");
-        return;
+
+      // Tenta primeiro o formato de orçamento pré-agregado (mês/ano/valor)
+      const aggParsed = parseOrcamentoCSV(text);
+      if (aggParsed.linhas.length > 0) {
+        const r = await importarAggFn({ data: { linhas: aggParsed.linhas } });
+        const partes = r.map((x) => `${x.tipo} ${x.ano} v${x.versao} (${x.linhas} linhas)`);
+        toast.success(`Importado: ${partes.join(" · ")}`);
+      } else {
+        // Cai para o formato de extrato contabilístico
+        const parsed = parseCSV(text);
+        if (parsed.linhas.length === 0) {
+          toast.error("Nenhuma linha válida no ficheiro.");
+          return;
+        }
+        const r = await importarFn({
+          data: {
+            ano,
+            linhas: parsed.linhas.map((l) => ({
+              centro_custo: l.centro_custo,
+              conta: l.conta ?? "",
+              descricao_conta: l.descricao_conta,
+              data: l.data ?? "",
+              debito: l.debito,
+              credito: l.credito,
+            })),
+          },
+        });
+        const partes: string[] = [];
+        if (r.RECEITA.linhas) partes.push(`Receita v${r.RECEITA.versao} (${r.RECEITA.linhas} linhas)`);
+        if (r.DESPESA.linhas) partes.push(`Despesa v${r.DESPESA.versao} (${r.DESPESA.linhas} linhas)`);
+        toast.success(`Importado: ${partes.join(" · ")}`);
       }
-      const r = await importarFn({
-        data: {
-          ano,
-          linhas: parsed.linhas.map((l) => ({
-            centro_custo: l.centro_custo,
-            conta: l.conta ?? "",
-            descricao_conta: l.descricao_conta,
-            data: l.data ?? "",
-            debito: l.debito,
-            credito: l.credito,
-          })),
-        },
-      });
-      const partes: string[] = [];
-      if (r.RECEITA.linhas) partes.push(`Receita v${r.RECEITA.versao} (${r.RECEITA.linhas} linhas)`);
-      if (r.DESPESA.linhas) partes.push(`Despesa v${r.DESPESA.versao} (${r.DESPESA.linhas} linhas)`);
-      toast.success(`Importado: ${partes.join(" · ")}`);
+
       qc.invalidateQueries({ queryKey: ["orc-versoes"] });
       qc.invalidateQueries({ queryKey: ["orc-linhas"] });
       qc.invalidateQueries({ queryKey: ["orc-anos"] });
@@ -193,6 +204,7 @@ function OrcamentoPage() {
       if (fileRef.current) fileRef.current.value = "";
     }
   };
+
 
   const criarVersao = async () => {
     try {
