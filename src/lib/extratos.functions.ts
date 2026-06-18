@@ -86,3 +86,24 @@ export const apagarMesExtrato = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const listarMovimentos = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const all: any[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+      const { data, error } = await context.supabase
+        .from("transacoes_extrato")
+        .select("id, conta, descricao_conta, data, num_documento, diario, movimento, centro_custo, debito, credito, mes_referencia")
+        .order("data", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) throw new Error(error.message);
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    return all;
+  });
