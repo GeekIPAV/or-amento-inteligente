@@ -98,3 +98,17 @@ export const anosDisponiveis = createServerFn({ method: "GET" })
     if (set.size === 0) set.add(new Date().getFullYear());
     return Array.from(set).sort((a, b) => b - a);
   });
+
+export const mesesDisponiveis = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { ano: number }) => z.object({ ano: z.number().int() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: meses, error } = await context.supabase.rpc("resumo_transacoes_mensal", {
+      p_ano: data.ano,
+    });
+    if (error) throw new Error(error.message);
+    return (meses ?? [])
+      .map((r) => Number(r.mes))
+      .filter((m) => Number.isInteger(m) && m >= 1 && m <= 12)
+      .sort((a, b) => a - b);
+  });

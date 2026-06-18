@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { z } from "zod";
-import { resumoDashboard, anosDisponiveis } from "@/lib/dashboard.functions";
+import { resumoDashboard, anosDisponiveis, mesesDisponiveis } from "@/lib/dashboard.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -72,7 +72,14 @@ function Dashboard() {
   const anoAtual = hoje.getFullYear();
   const anoDefault = search.ano ?? (anos.length ? (anos.includes(anoAtual) ? anoAtual : anos[0]) : anoAtual);
   const ano = anoDefault;
-  const mes = search.mes ?? (ano === anoAtual ? hoje.getMonth() + 1 : 12);
+
+  const mesesFn = useServerFn(mesesDisponiveis);
+  const { data: mesesComDados = [] } = useQuery({
+    queryKey: ["meses-disponiveis", ano],
+    queryFn: () => mesesFn({ data: { ano } }),
+  });
+
+  const mes = search.mes ?? mesesComDados.at(-1) ?? (ano === anoAtual ? hoje.getMonth() + 1 : 12);
 
   const resumoFn = useServerFn(resumoDashboard);
   const { data, isLoading } = useQuery({
@@ -111,7 +118,9 @@ function Dashboard() {
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               {MESES_LONGOS.map((nome, i) => (
-                <SelectItem key={i} value={String(i + 1)}>{nome}</SelectItem>
+                <SelectItem key={i} value={String(i + 1)}>
+                  {nome}{mesesComDados.length > 0 && !mesesComDados.includes(i + 1) ? " · sem movimentos" : ""}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
