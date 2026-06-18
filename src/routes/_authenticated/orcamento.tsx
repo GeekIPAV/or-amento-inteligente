@@ -395,6 +395,7 @@ function OrcamentoPage() {
                 <tfoot>
                   <TableRow>
                     <TableCell className="sticky left-0 bg-muted/40 font-semibold">Total</TableCell>
+                    <TableCell className="bg-muted/40"></TableCell>
                     {meses.map((m) => (
                       <TableCell key={m} className="text-right font-semibold bg-muted/40">
                         {currency.format(totalColuna(m))}
