@@ -154,6 +154,45 @@ function OrcamentoPage() {
     }
   };
 
+  const importarExtrato = async (file: File) => {
+    setImportando(true);
+    try {
+      const text = await file.text();
+      const parsed = parseCSV(text);
+      if (parsed.linhas.length === 0) {
+        toast.error("Nenhuma linha válida no ficheiro.");
+        return;
+      }
+      const r = await importarFn({
+        data: {
+          ano,
+          linhas: parsed.linhas.map((l) => ({
+            centro_custo: l.centro_custo,
+            conta: l.conta ?? "",
+            descricao_conta: l.descricao_conta,
+            data: l.data ?? "",
+            debito: l.debito,
+            credito: l.credito,
+          })),
+        },
+      });
+      const partes: string[] = [];
+      if (r.RECEITA.linhas) partes.push(`Receita v${r.RECEITA.versao} (${r.RECEITA.linhas} linhas)`);
+      if (r.DESPESA.linhas) partes.push(`Despesa v${r.DESPESA.versao} (${r.DESPESA.linhas} linhas)`);
+      toast.success(`Importado: ${partes.join(" · ")}`);
+      qc.invalidateQueries({ queryKey: ["orc-versoes"] });
+      qc.invalidateQueries({ queryKey: ["orc-linhas"] });
+      qc.invalidateQueries({ queryKey: ["orc-anos"] });
+      qc.invalidateQueries({ queryKey: ["resumo"] });
+      set({ versao: undefined });
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro a importar");
+    } finally {
+      setImportando(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   const criarVersao = async () => {
     try {
       const r = await novaVersaoFn({ data: { ano, tipo } });
