@@ -138,6 +138,8 @@ function OrcamentoPage() {
           ano, tipo, versao,
           linhas: dirty.map((l) => ({
             id: l.id, projeto: l.projeto,
+            conta: l.conta ?? null,
+            descricao_conta: l.descricao_conta ?? null,
             m1: l.m1, m2: l.m2, m3: l.m3, m4: l.m4, m5: l.m5, m6: l.m6,
             m7: l.m7, m8: l.m8, m9: l.m9, m10: l.m10, m11: l.m11, m12: l.m12,
           })),
