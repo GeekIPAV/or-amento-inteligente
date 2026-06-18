@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      centro_custo_projetos: {
+        Row: {
+          centro_custo: string
+          created_at: string
+          id: string
+          nome_projeto: string
+          updated_at: string
+        }
+        Insert: {
+          centro_custo: string
+          created_at?: string
+          id?: string
+          nome_projeto: string
+          updated_at?: string
+        }
+        Update: {
+          centro_custo?: string
+          created_at?: string
+          id?: string
+          nome_projeto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orcamentos: {
         Row: {
           ano: number
@@ -163,6 +187,14 @@ export type Database = {
           ano: number
         }[]
       }
+      centros_custo_listagem: {
+        Args: never
+        Returns: {
+          centro_custo: string
+          linhas: number
+          nome_projeto: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -184,6 +216,7 @@ export type Database = {
         Returns: {
           despesa: number
           linhas: number
+          nome_projeto: string
           projeto: string
           receita: number
         }[]

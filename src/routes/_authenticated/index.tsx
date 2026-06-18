@@ -211,7 +211,8 @@ function Dashboard() {
                     <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem dados para {ano}.</TableCell></TableRow>
                   ) : projetos.map((p) => (
                     <TableRow key={`${p.projeto}-${p.tipo}`}>
-                      <TableCell className="font-medium">{p.projeto}</TableCell>
+                      <TableCell className="font-medium">{p.nome ?? p.projeto}</TableCell>
+
                       <TableCell>{p.tipo === "RECEITA" ? "Receita" : "Despesa"}</TableCell>
                       <TableCell className="text-right">{currency.format(p.orcado)}</TableCell>
                       <TableCell className="text-right">{currency.format(p.realizado)}</TableCell>
@@ -234,7 +235,7 @@ function Dashboard() {
                   const tipo = t === "receita" ? "RECEITA" : "DESPESA";
                   const dados = projetos
                     .filter((p) => p.tipo === tipo)
-                    .map((p) => ({ projeto: p.projeto, Orçamentado: p.orcado, Realizado: p.realizado }));
+                    .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado }));
                   const altura = Math.max(280, dados.length * 36 + 60);
                   return (
                     <TabsContent key={t} value={t} className="mt-4">
