@@ -64,17 +64,22 @@ function KpiCard({
 function Dashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
-  const ano = search.ano ?? new Date().getFullYear();
-  const mes = search.mes ?? new Date().getMonth() + 1;
 
   const anosFn = useServerFn(anosDisponiveis);
   const { data: anos = [] } = useQuery({ queryKey: ["anos"], queryFn: () => anosFn() });
+
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  const anoDefault = search.ano ?? (anos.length ? (anos.includes(anoAtual) ? anoAtual : anos[0]) : anoAtual);
+  const ano = anoDefault;
+  const mes = search.mes ?? (ano === anoAtual ? hoje.getMonth() + 1 : 12);
 
   const resumoFn = useServerFn(resumoDashboard);
   const { data, isLoading } = useQuery({
     queryKey: ["resumo", ano, mes],
     queryFn: () => resumoFn({ data: { ano, mes } }),
   });
+
 
   const set = (patch: Partial<{ ano: number; mes: number }>) =>
     navigate({ search: (prev: any) => ({ ...prev, ...patch }) });
