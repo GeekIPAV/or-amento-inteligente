@@ -103,11 +103,13 @@ function OrcamentoPage() {
   const set = (patch: Partial<{ ano: number; tipo: "RECEITA" | "DESPESA"; versao: number }>) =>
     navigate({ search: (prev: any) => ({ ...prev, ...patch }) });
 
-  const updateCell = (idx: number, field: "projeto" | Mes, value: string) => {
+  const updateCell = (idx: number, field: "projeto" | "conta" | "descricao_conta" | Mes, value: string) => {
     setLinhas((prev) => {
       const next = [...prev];
       const l = { ...next[idx], dirty: true };
       if (field === "projeto") l.projeto = value;
+      else if (field === "conta") l.conta = value;
+      else if (field === "descricao_conta") l.descricao_conta = value;
       else (l as any)[field] = Number(value.replace(",", ".")) || 0;
       next[idx] = l;
       return next;
