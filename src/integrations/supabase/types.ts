@@ -42,8 +42,10 @@ export type Database = {
         Row: {
           ano: number
           ativo: boolean
+          conta: string | null
           created_at: string
           created_by: string | null
+          descricao_conta: string | null
           id: string
           m1: number
           m10: number
@@ -64,8 +66,10 @@ export type Database = {
         Insert: {
           ano: number
           ativo?: boolean
+          conta?: string | null
           created_at?: string
           created_by?: string | null
+          descricao_conta?: string | null
           id?: string
           m1?: number
           m10?: number
@@ -86,8 +90,10 @@ export type Database = {
         Update: {
           ano?: number
           ativo?: boolean
+          conta?: string | null
           created_at?: string
           created_by?: string | null
+          descricao_conta?: string | null
           id?: string
           m1?: number
           m10?: number
