@@ -266,6 +266,23 @@ function OrcamentoPage() {
           <Button variant="outline" onClick={criarVersao} disabled={!isAtiva || versoes.length === 0}>
             <GitBranch className="size-4" /> Criar Nova Versão
           </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importarExtrato(f);
+            }}
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileRef.current?.click()}
+            disabled={importando}
+          >
+            <Upload className="size-4" /> {importando ? "A importar…" : "Importar Extrato"}
+          </Button>
           <Button onClick={guardar} disabled={!isAtiva}>
             <Save className="size-4" /> Guardar
           </Button>
