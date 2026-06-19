@@ -229,10 +229,12 @@ function OrcamentoPage() {
     });
   };
 
+  const saveCell = (row: Linha, patch: Partial<Linha>) => {
     const next = { ...row, ...patch } as Linha;
     if (JSON.stringify(next) === JSON.stringify(row)) return;
     updateMut.mutate(next);
   };
+
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
