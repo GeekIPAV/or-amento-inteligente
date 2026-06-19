@@ -20,6 +20,7 @@ export type PeekScope = {
   mesFim: number;
   projeto?: string | null;
   tipo?: "RECEITA" | "DESPESA" | null;
+  rubrica?: string | null;
 };
 
 export function DashboardPeek({
@@ -43,9 +44,11 @@ export function DashboardPeek({
           mesFim: scope!.mesFim,
           projeto: scope?.projeto ?? null,
           tipo: scope?.tipo ?? null,
+          rubrica: scope?.rubrica ?? null,
         },
       }),
   });
+
 
   const totReceita = (data?.transacoes ?? []).reduce(
     (a, t: any) => a + (String(t.conta ?? "").startsWith("7") ? Number(t.credito ?? 0) - Number(t.debito ?? 0) : 0),
