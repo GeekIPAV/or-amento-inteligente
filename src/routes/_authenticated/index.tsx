@@ -255,10 +255,11 @@ function Dashboard() {
 
   const [peek, setPeek] = useState<PeekScope | null>(null);
   const openMonth = (m: number, tipo?: "RECEITA" | "DESPESA") => {
+    const multi = anosAlvo.length > 1;
     setPeek({
-      titulo: `${MESES_LONGOS[m - 1]} ${ano}${tipo ? ` · ${tipo === "RECEITA" ? "Receitas" : "Despesas"}` : ""}`,
-      subtitulo: `Detalhes do mês`,
-      anos: [ano],
+      titulo: `${MESES_LONGOS[m - 1]}${multi ? ` · ${anosAlvo[0]}–${anosAlvo[anosAlvo.length - 1]}` : ` ${ano}`}${tipo ? ` · ${tipo === "RECEITA" ? "Receitas" : "Despesas"}` : ""}`,
+      subtitulo: "Detalhes do mês",
+      anos: anosAlvo,
       mesIni: m,
       mesFim: m,
       tipo: tipo ?? null,
