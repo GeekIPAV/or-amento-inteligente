@@ -142,11 +142,14 @@ function ResumoRubricasGrid({
   rubricas,
   isLoading,
   ano,
+  onRowClick,
 }: {
   rubricas: RubRow[];
   isLoading: boolean;
   ano: number;
+  onRowClick?: (r: RubRow) => void;
 }) {
+
   const columns: ColumnDef<RubRow, any>[] = [
     {
       accessorKey: "rubrica",
