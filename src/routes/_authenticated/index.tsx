@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { DashboardPeek, type PeekScope } from "@/components/dashboard-peek";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
@@ -250,6 +251,31 @@ function Dashboard() {
   }, [data]);
 
   const anosLista = anos.length ? anos : [ano];
+  const anosAlvo: number[] = (data?.intervalo as any)?.anosAlvo ?? [ano];
+
+  const [peek, setPeek] = useState<PeekScope | null>(null);
+  const openMonth = (m: number, tipo?: "RECEITA" | "DESPESA") => {
+    setPeek({
+      titulo: `${MESES_LONGOS[m - 1]} ${ano}${tipo ? ` · ${tipo === "RECEITA" ? "Receitas" : "Despesas"}` : ""}`,
+      subtitulo: `Detalhes do mês`,
+      anos: [ano],
+      mesIni: m,
+      mesFim: m,
+      tipo: tipo ?? null,
+    });
+  };
+  const openProjeto = (projeto: string, nome: string, tipo?: "RECEITA" | "DESPESA") => {
+    setPeek({
+      titulo: nome,
+      subtitulo: `${descricaoPeriodo}${tipo ? ` · ${tipo === "RECEITA" ? "Receitas" : "Despesas"}` : ""}`,
+      anos: anosAlvo,
+      mesIni: (data?.intervalo as any)?.mesIni ?? 1,
+      mesFim: (data?.intervalo as any)?.mesFim ?? 12,
+      projeto,
+      tipo: tipo ?? null,
+    });
+  };
+
 
   const descricaoPeriodo = (() => {
     const anoTxt = anosCum ? `até ${ano}` : `${ano}`;
@@ -329,7 +355,7 @@ function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Orçamentado vs Realizado por mês</CardTitle>
-          <CardDescription>Visão mensal completa do ano {ano}</CardDescription>
+          <CardDescription>Clica numa barra para ver os detalhes · ano {ano}</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="ambos">
@@ -346,10 +372,10 @@ function Dashboard() {
                   <YAxis tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v)} />
                   <Tooltip formatter={(v: number) => currency.format(v)} labelFormatter={(m) => MESES_LONGOS[(m as number) - 1]} />
                   <Legend />
-                  <Bar dataKey="receitaOrc" name="Receita Orçada" fill="hsl(160 70% 75%)" />
-                  <Bar dataKey="receitaReal" name="Receita Realizada" fill="hsl(160 70% 45%)" />
-                  <Bar dataKey="despesaOrc" name="Despesa Orçada" fill="hsl(0 70% 80%)" />
-                  <Bar dataKey="despesaReal" name="Despesa Realizada" fill="hsl(0 70% 55%)" />
+                  <Bar dataKey="receitaOrc" name="Receita Orçada" fill="hsl(160 70% 75%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
+                  <Bar dataKey="receitaReal" name="Receita Realizada" fill="hsl(160 70% 45%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
+                  <Bar dataKey="despesaOrc" name="Despesa Orçada" fill="hsl(0 70% 80%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
+                  <Bar dataKey="despesaReal" name="Despesa Realizada" fill="hsl(0 70% 55%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
                 </BarChart>
               </ResponsiveContainer>
             </TabsContent>
@@ -365,8 +391,8 @@ function Dashboard() {
                       labelFormatter={(m) => MESES_LONGOS[(m as number) - 1]}
                     />
                     <Legend />
-                    <Bar dataKey={t === "receita" ? "receitaOrc" : "despesaOrc"} name={"Orçamentado\n"} fill="hsl(220 70% 60%)" />
-                    <Bar dataKey={t === "receita" ? "receitaReal" : "despesaReal"} name="Realizado" fill={t === "receita" ? "hsl(160 70% 45%)" : "hsl(0 70% 55%)"} />
+                    <Bar dataKey={t === "receita" ? "receitaOrc" : "despesaOrc"} name={"Orçamentado"} fill="hsl(220 70% 60%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, t === "receita" ? "RECEITA" : "DESPESA")} />
+                    <Bar dataKey={t === "receita" ? "receitaReal" : "despesaReal"} name="Realizado" fill={t === "receita" ? "hsl(160 70% 45%)" : "hsl(0 70% 55%)"} cursor="pointer" onClick={(d: any) => openMonth(d.mes, t === "receita" ? "RECEITA" : "DESPESA")} />
                   </BarChart>
                 </ResponsiveContainer>
               </TabsContent>
@@ -374,6 +400,7 @@ function Dashboard() {
           </Tabs>
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader>
@@ -403,10 +430,12 @@ function Dashboard() {
                         Orçamentado: p.orcado,
                         Realizado: p.realizado,
                         _tipo: p.tipo,
+                        _projeto: p.projeto,
+                        _nome: p.nome ?? p.projeto,
                       }))
                     : projetos
                         .filter((p) => p.tipo === (t === "receita" ? "RECEITA" : "DESPESA"))
-                        .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado, _tipo: p.tipo }));
+                        .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado, _tipo: p.tipo, _projeto: p.projeto, _nome: p.nome ?? p.projeto }));
                   const altura = Math.max(280, dados.length * 36 + 60);
                   const corReal = t === "despesa" ? "hsl(0 70% 55%)" : "hsl(160 70% 45%)";
                   return (
@@ -422,8 +451,8 @@ function Dashboard() {
                               <YAxis type="category" dataKey="projeto" width={180} />
                               <Tooltip formatter={(v: number) => currency.format(v)} />
                               <Legend />
-                              <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" />
-                              <Bar dataKey="Realizado" fill={corReal} />
+                              <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, d._tipo)} />
+                              <Bar dataKey="Realizado" fill={corReal} cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, d._tipo)} />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
@@ -431,11 +460,15 @@ function Dashboard() {
                     </TabsContent>
                   );
                 })}
+
               </Tabs>
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
+
+      <DashboardPeek scope={peek} open={!!peek} onOpenChange={(v) => { if (!v) setPeek(null); }} />
     </div>
   );
+
 }
