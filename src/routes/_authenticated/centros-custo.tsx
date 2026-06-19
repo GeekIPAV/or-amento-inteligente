@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { Save, ChevronsUpDown, X } from "lucide-react";
 import { SummaryCard } from "@/components/data-grid";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { SortHeader, useSortableRows } from "@/components/sortable-table";
+import { SortHeader, useSortableRows, useColumnWidths } from "@/components/sortable-table";
 
 
 export const Route = createFileRoute("/_authenticated/centros-custo")({
