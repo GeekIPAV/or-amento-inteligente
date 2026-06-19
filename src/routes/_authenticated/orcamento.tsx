@@ -8,7 +8,6 @@ import {
   ColumnOrderState,
   ColumnSizingState,
   FilterFn,
-  Header,
   SortingState,
   VisibilityState,
   flexRender,
