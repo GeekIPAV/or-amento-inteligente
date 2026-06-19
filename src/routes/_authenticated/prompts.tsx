@@ -166,6 +166,9 @@ function PromptCard({
               Editar
             </Button>
           )}
+          <Button variant="secondary" size="icon" onClick={copiar} className="shrink-0">
+            {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => { if (confirm("Tens a certeza que queres apagar este prompt?")) onDelete(); }} className="shrink-0 text-muted-foreground hover:text-destructive">
             <Trash2 className="size-4" />
           </Button>
@@ -193,35 +196,29 @@ function PromptCard({
           />
         ) : (
           <div className="relative">
-            <div
-              className={`rounded-md border border-transparent bg-background px-3 py-2 text-sm prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${colapsado ? "line-clamp-6" : ""}`}
-              dangerouslySetInnerHTML={{ __html: prompt.descricaoHtml || '<span class="text-muted-foreground italic">Sem descrição</span>' }}
-            />
-            {prompt.descricaoHtml && (
-              <button
-                type="button"
-                onClick={() => setColapsado((c) => !c)}
-                className="mt-1 text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-              >
-                {colapsado ? (
-                  <>
-                    <ChevronDown className="size-3" /> Ver mais
-                  </>
-                ) : (
-                  <>
-                    <ChevronUp className="size-3" /> Ver menos
-                  </>
-                )}
-              </button>
+            {!colapsado && (
+              <div
+                className="rounded-md border border-transparent bg-background px-3 py-2 text-sm prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                dangerouslySetInnerHTML={{ __html: prompt.descricaoHtml || '<span class="text-muted-foreground italic">Sem descrição</span>' }}
+              />
             )}
+            <button
+              type="button"
+              onClick={() => setColapsado((c) => !c)}
+              className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+            >
+              {colapsado ? (
+                <>
+                  <ChevronDown className="size-3" /> Ver mais
+                </>
+              ) : (
+                <>
+                  <ChevronUp className="size-3" /> Ver menos
+                </>
+              )}
+            </button>
           </div>
         )}
-        <div className="flex justify-end">
-          <Button variant="secondary" size="sm" onClick={copiar} className="gap-2">
-            {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
-            Copiar descrição
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
