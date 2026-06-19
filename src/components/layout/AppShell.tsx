@@ -1,23 +1,36 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban, MessageSquare } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban, MessageSquare, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { verificarAdmin } from "@/lib/admin-users.functions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/orcamento", label: "Orçamento", icon: FileSpreadsheet },
-  { to: "/movimentos", label: "Movimentos", icon: TableIcon },
-  { to: "/centros-custo", label: "Centros de Custo", icon: FolderKanban },
-  { to: "/importar-extratos", label: "Importar Extratos", icon: Upload },
-  { to: "/chat", label: "Assistente", icon: MessageSquare },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
+  { to: "/orcamento", label: "Orçamento", icon: FileSpreadsheet, adminOnly: false },
+  { to: "/movimentos", label: "Movimentos", icon: TableIcon, adminOnly: false },
+  { to: "/centros-custo", label: "Centros de Custo", icon: FolderKanban, adminOnly: false },
+  { to: "/importar-extratos", label: "Importar Extratos", icon: Upload, adminOnly: false },
+  { to: "/chat", label: "Assistente", icon: MessageSquare, adminOnly: false },
+  { to: "/admin", label: "Utilizadores", icon: Users, adminOnly: true },
 ] as const;
+
 
 
 
 export function AppShell() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const verificarAdminFn = useServerFn(verificarAdmin);
+  const { data: adminInfo } = useQuery({
+    queryKey: ["is-admin"],
+    queryFn: () => verificarAdminFn(),
+    staleTime: 5 * 60_000,
+  });
+  const isAdmin = !!adminInfo?.isAdmin;
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -37,8 +50,9 @@ export function AppShell() {
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {nav.map((item) => {
+          {nav.filter((i) => !i.adminOnly || isAdmin).map((item) => {
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+
             const Icon = item.icon;
             return (
               <Link
