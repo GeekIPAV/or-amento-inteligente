@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AceitarConviteRouteImport } from './routes/aceitar-convite'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedPromptsRouteImport } from './routes/_authenticated/prompts'
@@ -22,6 +23,11 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AceitarConviteRoute = AceitarConviteRouteImport.update({
+  id: '/aceitar-convite',
+  path: '/aceitar-convite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -68,6 +74,7 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/aceitar-convite': typeof AceitarConviteRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/centros-custo': typeof AuthenticatedCentrosCustoRoute
@@ -77,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/prompts': typeof AuthenticatedPromptsRoute
 }
 export interface FileRoutesByTo {
+  '/aceitar-convite': typeof AceitarConviteRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/centros-custo': typeof AuthenticatedCentrosCustoRoute
@@ -89,6 +97,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/aceitar-convite': typeof AceitarConviteRoute
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/centros-custo': typeof AuthenticatedCentrosCustoRoute
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/aceitar-convite'
     | '/auth'
     | '/admin'
     | '/centros-custo'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/prompts'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/aceitar-convite'
     | '/auth'
     | '/admin'
     | '/centros-custo'
@@ -122,6 +133,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/aceitar-convite'
     | '/auth'
     | '/_authenticated/admin'
     | '/_authenticated/centros-custo'
@@ -134,6 +146,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AceitarConviteRoute: typeof AceitarConviteRoute
   AuthRoute: typeof AuthRoute
 }
 
@@ -144,6 +157,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aceitar-convite': {
+      id: '/aceitar-convite'
+      path: '/aceitar-convite'
+      fullPath: '/aceitar-convite'
+      preLoaderRoute: typeof AceitarConviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -230,6 +250,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AceitarConviteRoute: AceitarConviteRoute,
   AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
