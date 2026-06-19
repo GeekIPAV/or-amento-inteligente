@@ -356,18 +356,25 @@ function CentrosCustoPage() {
 function ProjetoPicker({
   projetos,
   selected,
+  projetoToCC,
+  currentCC,
   onToggle,
 }: {
   projetos: string[];
   selected: string[];
+  projetoToCC: Map<string, string>;
+  currentCC: string;
   onToggle: (projeto: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
 
-  const filtered = projetos.filter((p) =>
-    !q ? true : p.toLowerCase().includes(q.toLowerCase()),
-  );
+  const filtered = projetos.filter((p) => {
+    const owner = projetoToCC.get(p);
+    if (owner && owner !== currentCC) return false;
+    return !q ? true : p.toLowerCase().includes(q.toLowerCase());
+  });
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
