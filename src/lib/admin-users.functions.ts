@@ -60,14 +60,14 @@ export const listUsuarios = createServerFn({ method: "GET" })
       .sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
   });
 
-export const criarUsuario = createServerFn({ method: "POST" })
+export const convidarUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { email: string; password: string; role: "admin" | "user" }) =>
+  .inputValidator((d: { email: string; role: "admin" | "user"; redirectTo: string }) =>
     z
       .object({
         email: z.string().email(),
-        password: z.string().min(8, "Mínimo 8 caracteres"),
         role: z.enum(["admin", "user"]),
+        redirectTo: z.string().url(),
       })
       .parse(d),
   )
@@ -75,22 +75,20 @@ export const criarUsuario = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-    });
+    const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      data.email,
+      { redirectTo: data.redirectTo },
+    );
     if (error) throw new Error(error.message);
-    if (!created.user) throw new Error("Falha ao criar utilizador.");
+    if (!invited.user) throw new Error("Falha ao convidar utilizador.");
 
-    // Substituir o role criado pelo trigger pelo role pedido
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", created.user.id);
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", invited.user.id);
     const { error: errR } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: created.user.id, role: data.role });
+      .insert({ user_id: invited.user.id, role: data.role });
     if (errR) throw new Error(errR.message);
 
-    return { id: created.user.id };
+    return { id: invited.user.id };
   });
 
 export const removerUsuario = createServerFn({ method: "POST" })
