@@ -557,20 +557,93 @@ function OrcamentoPage() {
       {/* Data Grid */}
       <div className="rounded-md border">
         <div className="max-h-[72vh] overflow-auto">
-          <Table className="text-sm">
+          <Table
+            className="text-sm"
+            style={{
+              width: table.getTotalSize(),
+              tableLayout: "fixed",
+            }}
+          >
             <TableHeader className="sticky top-0 z-10 bg-muted/50 backdrop-blur">
               {table.getHeaderGroups().map((hg) => (
                 <TableRow key={hg.id} className="hover:bg-transparent">
-                  {hg.headers.map((h) => (
-                    <TableHead
-                      key={h.id}
-                      className="h-8 whitespace-nowrap px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                    >
-                      {h.isPlaceholder
-                        ? null
-                        : flexRender(h.column.columnDef.header, h.getContext())}
-                    </TableHead>
-                  ))}
+                  {hg.headers.map((h) => {
+                    const canDrag = h.column.id !== "select";
+                    const isDragOver = dragOverCol === h.column.id;
+                    return (
+                      <TableHead
+                        key={h.id}
+                        style={{ width: h.getSize() }}
+                        draggable={canDrag}
+                        onDragStart={
+                          canDrag
+                            ? (e) => {
+                                dragColRef.current = h.column.id;
+                                e.dataTransfer.effectAllowed = "move";
+                              }
+                            : undefined
+                        }
+                        onDragOver={
+                          canDrag
+                            ? (e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = "move";
+                                if (dragOverCol !== h.column.id)
+                                  setDragOverCol(h.column.id);
+                              }
+                            : undefined
+                        }
+                        onDragLeave={
+                          canDrag
+                            ? () => {
+                                if (dragOverCol === h.column.id)
+                                  setDragOverCol(null);
+                              }
+                            : undefined
+                        }
+                        onDrop={
+                          canDrag
+                            ? (e) => {
+                                e.preventDefault();
+                                const src = dragColRef.current;
+                                dragColRef.current = null;
+                                setDragOverCol(null);
+                                if (src) reorderColumn(src, h.column.id);
+                              }
+                            : undefined
+                        }
+                        onDragEnd={() => {
+                          dragColRef.current = null;
+                          setDragOverCol(null);
+                        }}
+                        className={cn(
+                          "group relative h-8 select-none whitespace-nowrap px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+                          canDrag && "cursor-grab active:cursor-grabbing",
+                          isDragOver && "bg-primary/10",
+                        )}
+                      >
+                        {h.isPlaceholder
+                          ? null
+                          : flexRender(
+                              h.column.columnDef.header,
+                              h.getContext(),
+                            )}
+                        {h.column.getCanResize() && (
+                          <div
+                            onMouseDown={h.getResizeHandler()}
+                            onTouchStart={h.getResizeHandler()}
+                            onDragStart={(e) => e.preventDefault()}
+                            onClick={(e) => e.stopPropagation()}
+                            draggable={false}
+                            className={cn(
+                              "absolute right-0 top-0 z-20 h-full w-1.5 cursor-col-resize touch-none select-none bg-transparent hover:bg-primary/60",
+                              h.column.getIsResizing() && "bg-primary",
+                            )}
+                          />
+                        )}
+                      </TableHead>
+                    );
+                  })}
                 </TableRow>
               ))}
               {/* Filter sub-header */}
@@ -578,6 +651,7 @@ function OrcamentoPage() {
                 {table.getHeaderGroups()[0]?.headers.map((h) => (
                   <TableHead
                     key={`f-${h.id}`}
+                    style={{ width: h.getSize() }}
                     className="h-8 whitespace-nowrap px-2 py-1"
                   >
                     {h.column.getCanFilter() ? (
@@ -616,7 +690,8 @@ function OrcamentoPage() {
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className="h-8 whitespace-nowrap px-2 py-1 align-middle"
+                        style={{ width: cell.column.getSize() }}
+                        className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle"
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
