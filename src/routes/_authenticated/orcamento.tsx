@@ -449,7 +449,7 @@ function OrcamentoPage() {
             {uploadMut.isPending ? "A importar…" : "Upload CSV"}
           </Button>
 
-        <div className="flex flex-wrap items-center gap-2">
+
           <Input
             placeholder="Pesquisar…"
             value={globalFilter}
