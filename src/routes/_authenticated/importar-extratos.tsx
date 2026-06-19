@@ -9,11 +9,19 @@ import { importarExtrato, historicoImportacoes, apagarMesExtrato } from "@/lib/e
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, X, Trash2 } from "lucide-react";
-import { currency, MESES_LONGOS } from "@/lib/format";
+
 import { cn } from "@/lib/utils";
+import { ColumnDef } from "@tanstack/react-table";
+import {
+  CurrencyCell,
+  DataGrid,
+  numFilterFn,
+  sortHeader,
+  textFilterFn,
+} from "@/components/data-grid";
 
 export const Route = createFileRoute("/_authenticated/importar-extratos")({
   head: () => ({ meta: [{ title: "Importar Extratos — Finanças" }] }),
@@ -24,6 +32,71 @@ interface FileParsed {
   nome: string;
   result: ParseResult;
 }
+
+const PREVIEW_COLUMNS: ColumnDef<any, any>[] = [
+  {
+    accessorKey: "data",
+    header: sortHeader("Data"),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 110,
+    cell: ({ getValue }) => (getValue() as string) ?? "—",
+  },
+  {
+    accessorKey: "conta",
+    header: sortHeader("Conta"),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 100,
+    cell: ({ getValue }) => (
+      <span className="font-mono text-xs">{(getValue() as string) ?? "—"}</span>
+    ),
+  },
+  {
+    accessorKey: "descricao_conta",
+    header: sortHeader("Descrição"),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 260,
+    cell: ({ getValue }) => (getValue() as string) ?? "—",
+  },
+  {
+    accessorKey: "num_documento",
+    header: sortHeader("Nº Doc."),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 110,
+    cell: ({ getValue }) => (getValue() as string) ?? "—",
+  },
+  {
+    accessorKey: "centro_custo",
+    header: sortHeader("C. Custo"),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 110,
+    cell: ({ getValue }) => (getValue() as string) ?? "—",
+  },
+  {
+    accessorKey: "debito",
+    header: sortHeader("Débito"),
+    filterFn: numFilterFn,
+    meta: { filterType: "number" },
+    size: 120,
+    cell: ({ getValue }) => (
+      <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" showZeroAsDash />
+    ),
+  },
+  {
+    accessorKey: "credito",
+    header: sortHeader("Crédito"),
+    filterFn: numFilterFn,
+    meta: { filterType: "number" },
+    size: 120,
+    cell: ({ getValue }) => (
+      <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" showZeroAsDash />
+    ),
+  },
+];
 
 function ImportarExtratosPage() {
   const qc = useQueryClient();
@@ -185,34 +258,19 @@ function ImportarExtratosPage() {
             ))}
 
             {preview.length > 0 && (
-              <div className="overflow-x-auto">
-                <div className="text-sm font-medium mb-2">Pré-visualização (10 primeiras linhas)</div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Conta</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Nº Doc.</TableHead>
-                      <TableHead>C. Custo</TableHead>
-                      <TableHead className="text-right">Débito</TableHead>
-                      <TableHead className="text-right">Crédito</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {preview.map((l, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{l.data ?? "—"}</TableCell>
-                        <TableCell>{l.conta ?? "—"}</TableCell>
-                        <TableCell className="max-w-[280px] truncate">{l.descricao_conta ?? "—"}</TableCell>
-                        <TableCell>{l.num_documento ?? "—"}</TableCell>
-                        <TableCell>{l.centro_custo ?? "—"}</TableCell>
-                        <TableCell className="text-right">{currency.format(l.debito)}</TableCell>
-                        <TableCell className="text-right">{currency.format(l.credito)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div>
+                <div className="text-sm font-medium mb-2">
+                  Pré-visualização (10 primeiras linhas)
+                </div>
+                <DataGrid
+                  data={preview as any[]}
+                  columns={PREVIEW_COLUMNS}
+                  getRowId={(_r: any, i?: number) => String(i ?? 0)}
+                  showSearch={false}
+                  showColumns={false}
+                  maxHeight="40vh"
+                  emptyMessage="Sem linhas."
+                />
               </div>
             )}
           </CardContent>
@@ -222,33 +280,57 @@ function ImportarExtratosPage() {
       <Card>
         <CardHeader>
           <CardTitle>Importações recentes</CardTitle>
-          <CardDescription>Últimos meses de referência com transações.</CardDescription>
+          <CardDescription>
+            Últimos meses de referência com transações.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mês</TableHead>
-                <TableHead>Importado em</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {historico.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Sem importações.</TableCell></TableRow>
-              ) : historico.map((h, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-medium">{h.mes_referencia}</TableCell>
-                  <TableCell>{new Date(h.importado_em).toLocaleString("pt-PT")}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => handleApagarMes(h.mes_referencia)}>
-                      <Trash2 className="size-4" /> Apagar mês
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataGrid
+            data={historico as any[]}
+            columns={[
+              {
+                accessorKey: "mes_referencia",
+                header: sortHeader("Mês"),
+                filterFn: textFilterFn,
+                meta: { filterType: "text" },
+                size: 140,
+                cell: ({ getValue }) => (
+                  <span className="font-medium">{getValue() as string}</span>
+                ),
+              },
+              {
+                accessorKey: "importado_em",
+                header: sortHeader("Importado em"),
+                filterFn: textFilterFn,
+                meta: { filterType: "text" },
+                size: 220,
+                cell: ({ getValue }) =>
+                  new Date(getValue() as string).toLocaleString("pt-PT"),
+              },
+              {
+                id: "acoes",
+                header: () => <span>Ações</span>,
+                enableColumnFilter: false,
+                enableSorting: false,
+                enableGrouping: false,
+                size: 140,
+                cell: ({ row }) => (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleApagarMes(row.original.mes_referencia)}
+                  >
+                    <Trash2 className="size-4" /> Apagar
+                  </Button>
+                ),
+              },
+            ]}
+            getRowId={(r: any) => r.mes_referencia}
+            showSearch={false}
+            showColumns={false}
+            maxHeight="50vh"
+            emptyMessage="Sem importações."
+          />
         </CardContent>
       </Card>
     </div>
