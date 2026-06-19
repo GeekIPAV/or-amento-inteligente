@@ -166,7 +166,7 @@ function PromptCard({
               Editar
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={onDelete} className="shrink-0 text-muted-foreground hover:text-destructive">
+          <Button variant="ghost" size="icon" onClick={() => { if (confirm("Tens a certeza que queres apagar este prompt?")) onDelete(); }} className="shrink-0 text-muted-foreground hover:text-destructive">
             <Trash2 className="size-4" />
           </Button>
         </div>
