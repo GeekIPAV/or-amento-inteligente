@@ -1,27 +1,33 @@
-## Inverter a lógica: Rubricas → Contas
+Reaproveitar a tabela existente `centro_custo_projetos` e transformar a página `/centros-custo` no mesmo padrão de **Contas → Rubricas**, mas com **Projetos (do orçamento) → Centros de Custo**.
 
-Substituir a página atual (Contas → Rubrica) por uma nova abordagem onde cada **Rubrica** do orçamento pode ter **uma ou várias Contas** associadas.
+A coluna `nome_projeto` passa a guardar o **projeto do orçamento** (`orcamentos.projeto`) em vez de texto livre. Cada centro de custo só pode estar atribuído a um projeto (já garantido pela PK `centro_custo`).
 
-### Alterações
+## Base de dados (migration — sem tabela nova)
 
-**1. Base de dados (migration)**
-- A tabela `conta_rubricas` já tem `conta` como UNIQUE (1 conta → 1 rubrica), o que mantém a regra "uma conta só pertence a uma rubrica" — não é preciso alterar a estrutura.
-- Nova função RPC `rubricas_listagem()` que devolve, para cada rubrica distinta do orçamento:
-  - `rubrica`
-  - `contas` (array das contas atribuídas)
-  - `num_contas` (contagem)
-- Nova função RPC `contas_disponiveis()` que devolve todas as contas distintas dos movimentos (`transacoes_extrato`) com a descrição e a rubrica atualmente atribuída (se existir), para o seletor.
+1. **Funções SQL novas** (espelham as de rubricas, usando `centro_custo_projetos`):
+   - `projetos_disponiveis()` → distinct `projeto` de `orcamentos`
+   - `centros_custo_disponiveis()` → distinct CC de `transacoes_extrato` + projeto atribuído (LEFT JOIN `centro_custo_projetos`)
+   - `projetos_listagem()` → cada projeto + array de CCs atribuídos + contagem
+   - `atribuir_centros_custo_projeto(p_projeto, p_centros[])` → upsert no `centro_custo_projetos` (campo `nome_projeto = p_projeto`), apaga os CCs que deixaram de pertencer
 
-**2. Server functions (`src/lib/contas-rubricas.functions.ts`)**
-- Adicionar `listarRubricas` (chama `rubricas_listagem`).
-- Adicionar `listarContasDisponiveis` (chama `contas_disponiveis`).
-- Adicionar `atribuirContasARubrica({ rubrica, contas[] })`: faz upsert das contas selecionadas com a rubrica indicada, e limpa (set rubrica=null ou delete) as contas que deixaram de pertencer a essa rubrica.
+2. **Atualizar `resumo_transacoes_projeto(p_ano, p_mes)`** para agrupar pelo `nome_projeto` da tabela `centro_custo_projetos` (em vez de pelo `centro_custo` cru). CCs sem mapeamento → `(Sem projeto)`.
 
-**3. UI (`src/routes/_authenticated/contas-rubricas.tsx`)**
-- Reescrever a página: lista de **Rubricas** à esquerda, e para cada uma um **multi-select** de Contas (com a descrição visível) à direita.
-- Mostrar resumo: nº rubricas, nº contas atribuídas, nº contas sem rubrica.
-- Manter o padrão do "Gravar" que aplica todas as edições pendentes de uma só vez (como nos Centros de Custo).
-- Se uma conta já estiver atribuída a outra rubrica e for selecionada noutra, mover (a UNIQUE em `conta` garante consistência).
+3. `centros_custo_listagem()` mantém-se (usada na listagem antiga, ainda útil como referência) — sem alterações destrutivas.
 
-### Perguntas de confirmação
-- Manter o nome da página/rota `/contas-rubricas` e a entrada no menu como "Contas / Rubricas"? Ou prefere renomear para "Rubricas / Contas"?
+## Frontend
+
+4. **Substituir `src/routes/_authenticated/centros-custo.tsx`** pelo padrão de `contas-rubricas.tsx`:
+   - Linhas = projetos do orçamento
+   - Por linha: popover com checkboxes dos CCs disponíveis (com indicação se já estão noutro projeto — atribuir move-os)
+   - Pesquisa, badges, save com dirty-tracking
+   - Título: "Projetos → Centros de Custo"
+
+5. **Server functions** em `src/lib/centros-custo.functions.ts`:
+   - Substituir `listarCentrosCusto` / `guardarNomeProjeto` por `listarProjetos`, `listarCentrosCustoDisponiveis`, `atribuirCentrosCustoAProjeto` (chamam as novas RPCs).
+
+6. **Dashboard** — já chama `resumo_transacoes_projeto`; passa a usar o novo cruzamento automaticamente, sem mudanças de UI.
+
+## Notas
+
+- A entrada de menu mantém-se ("Centros de Custo") — só a UX e a semântica mudam.
+- Migrations não tocam em dados existentes de `centro_custo_projetos`; os registos que tenham `nome_projeto` que não bata certo com nenhum projeto do orçamento simplesmente não aparecem listados nesse projeto (e os CCs ficam disponíveis para reatribuir).
