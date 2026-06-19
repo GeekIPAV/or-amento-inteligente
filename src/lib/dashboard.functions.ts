@@ -209,6 +209,102 @@ export const resumoDashboard = createServerFn({ method: "GET" })
   });
 
 
+export const detalhesIntervalo = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (d: {
+      anos: number[];
+      mesIni: number;
+      mesFim: number;
+      projeto?: string | null;
+      tipo?: "RECEITA" | "DESPESA" | null;
+    }) =>
+      z
+        .object({
+          anos: z.array(z.number().int()).min(1),
+          mesIni: z.number().int().min(1).max(12),
+          mesFim: z.number().int().min(1).max(12),
+          projeto: z.string().nullish(),
+          tipo: z.enum(["RECEITA", "DESPESA"]).nullish(),
+        })
+        .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { anos, mesIni, mesFim, projeto, tipo } = data;
+
+    // Lista mes_referencia para o intervalo
+    const meses: string[] = [];
+    for (const a of anos) {
+      for (let m = mesIni; m <= mesFim; m++) {
+        meses.push(`${a}-${String(m).padStart(2, "0")}`);
+      }
+    }
+
+    // Transações (limitado a 1000 para o peek)
+    let q = context.supabase
+      .from("transacoes_extrato")
+      .select("id, data, conta, descricao_conta, num_documento, centro_custo, debito, credito, mes_referencia")
+      .in("mes_referencia", meses)
+      .order("data", { ascending: false })
+      .limit(1000);
+    if (tipo === "RECEITA") q = q.like("conta", "7%");
+    else if (tipo === "DESPESA") q = q.like("conta", "6%");
+    else q = q.or("conta.like.6%,conta.like.7%");
+    if (projeto) {
+      if (projeto === "(Sem projeto)")
+        q = q.or("centro_custo.is.null,centro_custo.eq.");
+      else q = q.eq("centro_custo", projeto);
+    }
+    const { data: txs, error: errT } = await q;
+    if (errT) throw new Error(errT.message);
+
+    // Versão ativa do orçamento
+    const { data: versaoAtiva } = await context.supabase
+      .from("orcamento_versoes")
+      .select("id")
+      .eq("ativa", true)
+      .maybeSingle();
+    const versaoId = versaoAtiva?.id ?? null;
+
+    let orcRows: any[] = [];
+    if (versaoId) {
+      let oq = context.supabase
+        .from("orcamentos")
+        .select("projeto, tipo, mes, ano, valor, descricao")
+        .eq("versao_id", versaoId)
+        .in("ano", anos)
+        .gte("mes", mesIni)
+        .lte("mes", mesFim)
+        .order("ano", { ascending: true })
+        .order("mes", { ascending: true });
+      if (projeto) oq = oq.eq("projeto", projeto);
+      if (tipo) oq = oq.eq("tipo", tipo);
+      const { data: o, error: errO } = await oq;
+      if (errO) throw new Error(errO.message);
+      orcRows = o ?? [];
+    }
+
+    // Mapa de nomes
+    const { data: mapas } = await context.supabase
+      .from("centro_custo_projetos")
+      .select("centro_custo, nome_projeto");
+    const nomeByCC = new Map<string, string>(
+      (mapas ?? []).map((m: any) => [m.centro_custo, m.nome_projeto]),
+    );
+
+    return {
+      transacoes: (txs ?? []).map((t: any) => ({
+        ...t,
+        projeto_nome: nomeByCC.get(String(t.centro_custo ?? "")) ?? t.centro_custo ?? "(Sem projeto)",
+      })),
+      orcamento: orcRows.map((o: any) => ({
+        ...o,
+        projeto_nome: nomeByCC.get(String(o.projeto ?? "")) ?? o.projeto,
+      })),
+    };
+  });
+
+
 export const anosDisponiveis = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
