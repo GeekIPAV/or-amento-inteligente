@@ -100,6 +100,7 @@ function PromptCard({
   const editorRef = useRef<HTMLDivElement>(null);
   const [copiado, setCopiado] = useState(false);
   const [editando, setEditando] = useState(false);
+  const [colapsado, setColapsado] = useState(true);
 
   // Initialize editor content once
   useEffect(() => {
