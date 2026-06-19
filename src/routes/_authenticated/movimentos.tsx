@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { listarMovimentos } from "@/lib/extratos.functions";
 import {
@@ -13,6 +13,8 @@ import {
   sortHeader,
   textFilterFn,
 } from "@/components/data-grid";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ImportarExtratosTab } from "@/components/ImportarExtratosTab";
 
 export const Route = createFileRoute("/_authenticated/movimentos")({
   component: MovimentosPage,
@@ -182,20 +184,31 @@ function MovimentosPage() {
         </div>
       </div>
 
-      <DataGrid<Mov>
-        data={data}
-        columns={columns}
-        getRowId={(r) => r.id}
-        isLoading={isLoading}
-        searchPlaceholder="Pesquisar em todas as colunas…"
-        groupable={[
-          { id: "mes_referencia", label: "Mês Ref." },
-          { id: "conta", label: "Conta" },
-          { id: "centro_custo", label: "Centro de Custo" },
-          { id: "diario", label: "Diário" },
-        ]}
-        emptyMessage="Sem movimentos."
-      />
+      <Tabs defaultValue="movimentos">
+        <TabsList>
+          <TabsTrigger value="movimentos">Movimentos</TabsTrigger>
+          <TabsTrigger value="importar">Importar</TabsTrigger>
+        </TabsList>
+        <TabsContent value="movimentos">
+          <DataGrid<Mov>
+            data={data}
+            columns={columns}
+            getRowId={(r) => r.id}
+            isLoading={isLoading}
+            searchPlaceholder="Pesquisar em todas as colunas…"
+            groupable={[
+              { id: "mes_referencia", label: "Mês Ref." },
+              { id: "conta", label: "Conta" },
+              { id: "centro_custo", label: "Centro de Custo" },
+              { id: "diario", label: "Diário" },
+            ]}
+            emptyMessage="Sem movimentos."
+          />
+        </TabsContent>
+        <TabsContent value="importar">
+          <ImportarExtratosTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
