@@ -261,20 +261,20 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
     const { data: txs, error: errT } = await q;
     if (errT) throw new Error(errT.message);
 
-    // Versão ativa do orçamento
-    const { data: versaoAtiva } = await context.supabase
+    // Versões ativas do orçamento (uma por ano)
+    const { data: versoesAtivas } = await context.supabase
       .from("orcamento_versoes")
-      .select("id")
+      .select("id, ano")
       .eq("ativa", true)
-      .maybeSingle();
-    const versaoId = versaoAtiva?.id ?? null;
+      .in("ano", anos);
+    const versaoIds = (versoesAtivas ?? []).map((v: any) => v.id as string);
 
     let orcRows: any[] = [];
-    if (versaoId) {
+    if (versaoIds.length > 0) {
       let oq = context.supabase
         .from("orcamentos")
         .select("projeto, tipo, mes, ano, valor, descricao")
-        .eq("versao_id", versaoId)
+        .in("versao_id", versaoIds)
         .in("ano", anos)
         .gte("mes", mesIni)
         .lte("mes", mesFim)
