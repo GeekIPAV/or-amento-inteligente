@@ -9,11 +9,152 @@ import { z } from "zod";
 import { resumoDashboard, anosDisponiveis, mesesDisponiveis } from "@/lib/dashboard.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { currency, percent, MESES_CURTOS, MESES_LONGOS } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wallet, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ColumnDef } from "@tanstack/react-table";
+import {
+  CurrencyCell,
+  DataGrid,
+  numFilterFn,
+  sortHeader,
+  textFilterFn,
+} from "@/components/data-grid";
+
+type ProjRow = {
+  projeto: string;
+  nome?: string | null;
+  tipo: "RECEITA" | "DESPESA";
+  orcado: number;
+  realizado: number;
+  desvio: number;
+  exec: number;
+};
+
+function ResumoProjetosGrid({
+  projetos,
+  isLoading,
+  ano,
+}: {
+  projetos: ProjRow[];
+  isLoading: boolean;
+  ano: number;
+}) {
+  const columns: ColumnDef<ProjRow, any>[] = [
+    {
+      id: "nome",
+      accessorFn: (r) => r.nome ?? r.projeto,
+      header: sortHeader("Projeto"),
+      filterFn: textFilterFn,
+      meta: { filterType: "text" },
+      size: 240,
+      cell: ({ getValue }) => (
+        <span className="font-medium">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "tipo",
+      header: sortHeader("Tipo"),
+      filterFn: textFilterFn,
+      meta: { filterType: "text" },
+      size: 110,
+      cell: ({ getValue }) => {
+        const t = getValue() as string;
+        return (
+          <span
+            className={cn(
+              "text-xs font-medium",
+              t === "RECEITA"
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-rose-600 dark:text-rose-400",
+            )}
+          >
+            {t === "RECEITA" ? "Receita" : "Despesa"}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "orcado",
+      header: sortHeader("Orçamentado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ row, getValue }) => (
+        <CurrencyCell
+          value={Number(getValue() ?? 0)}
+          tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"}
+        />
+      ),
+      aggregatedCell: ({ getValue }) => (
+        <CurrencyCell value={Number(getValue() ?? 0)} />
+      ),
+    },
+    {
+      accessorKey: "realizado",
+      header: sortHeader("Realizado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ row, getValue }) => (
+        <CurrencyCell
+          value={Number(getValue() ?? 0)}
+          tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"}
+        />
+      ),
+      aggregatedCell: ({ getValue }) => (
+        <CurrencyCell value={Number(getValue() ?? 0)} />
+      ),
+    },
+    {
+      accessorKey: "desvio",
+      header: sortHeader("Desvio"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => (
+        <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
+      ),
+      aggregatedCell: ({ getValue }) => (
+        <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
+      ),
+    },
+    {
+      accessorKey: "exec",
+      header: sortHeader("Execução"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 110,
+      enableGrouping: false,
+      cell: ({ row, getValue }) =>
+        row.original.orcado === 0 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <div className="text-right tabular-nums">
+            {percent(Number(getValue() ?? 0))}
+          </div>
+        ),
+    },
+  ];
+
+  return (
+    <DataGrid<ProjRow>
+      data={projetos}
+      columns={columns}
+      getRowId={(r) => `${r.projeto}-${r.tipo}`}
+      isLoading={isLoading}
+      searchPlaceholder="Pesquisar projetos…"
+      groupable={[{ id: "tipo", label: "Tipo" }]}
+      emptyMessage={`Sem dados para ${ano}.`}
+      maxHeight="60vh"
+    />
+  );
+}
+
 
 const searchSchema = z.object({
   ano: z.number().int().optional(),
