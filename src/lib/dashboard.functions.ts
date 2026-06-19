@@ -153,8 +153,8 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     };
     // Por projeto (filtrado)
     const porProjeto = new Map<string, { projeto: string; tipo: "RECEITA" | "DESPESA"; orcado: number }>();
-    // Por rubrica (filtrado)
-    const porRubrica = new Map<string, { rubrica: string; tipo: "RECEITA" | "DESPESA"; orcado: number }>();
+    // Por rubrica (filtrado) — uma linha por rubrica, sem split por tipo
+    const porRubrica = new Map<string, { rubrica: string; orcado: number }>();
 
     for (const o of orcs) {
       const tipo = o.tipo as "RECEITA" | "DESPESA";
@@ -173,12 +173,12 @@ export const resumoDashboard = createServerFn({ method: "GET" })
 
       const rub = (o.rubrica ?? "").trim();
       if (rub) {
-        const rkey = `${rub}|${tipo}`;
-        const re = porRubrica.get(rkey);
+        const re = porRubrica.get(rub);
         if (re) re.orcado += v;
-        else porRubrica.set(rkey, { rubrica: rub, tipo, orcado: v });
+        else porRubrica.set(rub, { rubrica: rub, orcado: v });
       }
     }
+
 
 
     // Realizados — mensal (gráfico): soma em todos os anos alvo
