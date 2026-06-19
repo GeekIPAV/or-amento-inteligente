@@ -10,6 +10,7 @@ import { resumoDashboard, anosDisponiveis, mesesDisponiveis } from "@/lib/dashbo
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { currency, percent, MESES_CURTOS, MESES_LONGOS } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wallet, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
