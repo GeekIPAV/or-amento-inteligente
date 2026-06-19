@@ -102,13 +102,13 @@ function PromptCard({
   const [editando, setEditando] = useState(false);
   const [colapsado, setColapsado] = useState(true);
 
-  // Initialize editor content once
+  // Populate editor content whenever entering edit mode
   useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== prompt.descricaoHtml) {
+    if (editando && editorRef.current && editorRef.current.innerHTML !== prompt.descricaoHtml) {
       editorRef.current.innerHTML = prompt.descricaoHtml;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [editando]);
 
   const exec = (cmd: string) => {
     editorRef.current?.focus();
