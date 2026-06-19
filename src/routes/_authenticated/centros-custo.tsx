@@ -101,6 +101,10 @@ function CentrosCustoPage() {
           const original = r.nome_projeto;
           const valor = nomes[r.centro_custo] ?? "";
           const dirty = valor.trim() !== "" && valor !== original;
+          const saveAll = () => {
+            if (dirtyItems.length === 0) return;
+            mut.mutate(dirtyItems);
+          };
           return (
             <div className="flex items-center gap-2">
               <Input
@@ -109,12 +113,7 @@ function CentrosCustoPage() {
                   setNomes((p) => ({ ...p, [r.centro_custo]: e.target.value }))
                 }
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && dirty) {
-                    mut.mutate({
-                      centro_custo: r.centro_custo,
-                      nome_projeto: valor.trim(),
-                    });
-                  }
+                  if (e.key === "Enter" && dirty) saveAll();
                 }}
                 className="h-7 text-sm"
               />
@@ -122,11 +121,11 @@ function CentrosCustoPage() {
                 size="sm"
                 variant={dirty ? "default" : "ghost"}
                 disabled={!dirty || mut.isPending}
-                onClick={() =>
-                  mut.mutate({
-                    centro_custo: r.centro_custo,
-                    nome_projeto: valor.trim(),
-                  })
+                onClick={saveAll}
+                title={
+                  dirtyItems.length > 1
+                    ? `Guardar ${dirtyItems.length} alterações`
+                    : "Guardar"
                 }
               >
                 <Save className="h-3.5 w-3.5" />
