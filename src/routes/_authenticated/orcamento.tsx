@@ -354,18 +354,45 @@ function OrcamentoPage() {
       { ...numColumn("ano", "Ano", saveCell, 0), size: 90, enableGrouping: true },
       { ...numColumn("mes", "Mês", saveCell, 0), size: 90, enableGrouping: true },
       {
-        ...numColumn("valor", "Valor", saveCell, 2),
+        accessorKey: "valor",
+        header: sortHeader("Valor"),
+        filterFn: numFilterFn,
+        meta: { filterType: "number" as const },
         size: 130,
         enableGrouping: false,
         aggregationFn: "sum",
-        aggregatedCell: ({ getValue }) => (
-          <div className="px-1 py-0.5 text-right text-sm font-semibold tabular-nums">
-            {new Intl.NumberFormat("pt-PT", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(Number(getValue() ?? 0))}
-          </div>
+        cell: ({ row }) => (
+          <EditableNumberCell
+            value={row.original.valor}
+            onSave={(v) => saveCell(row.original, { valor: v })}
+            decimals={2}
+            currency
+            tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"}
+          />
         ),
+        aggregatedCell: ({ getValue, row }) => {
+          // Determine tone: if all subrows are same tipo, color accordingly; else use sign
+          const subs = row.getLeafRows();
+          const allReceita = subs.every((r) => (r.original as Linha).tipo === "RECEITA");
+          const allDespesa = subs.every((r) => (r.original as Linha).tipo === "DESPESA");
+          const n = Number(getValue() ?? 0);
+          const tone = allReceita ? "receita" : allDespesa ? "despesa" : n >= 0 ? "receita" : "despesa";
+          return (
+            <div
+              className={cn(
+                "px-1 py-0.5 text-right text-sm font-semibold tabular-nums",
+                tone === "receita"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400",
+              )}
+            >
+              {new Intl.NumberFormat("pt-PT", {
+                style: "currency",
+                currency: "EUR",
+              }).format(n)}
+            </div>
+          );
+        },
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1090,10 +1117,14 @@ function EditableNumberCell({
   value,
   onSave,
   decimals,
+  currency,
+  tone,
 }: {
   value: number;
   onSave: (v: number) => void;
   decimals: number;
+  currency?: boolean;
+  tone?: "receita" | "despesa";
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value ?? ""));
@@ -1102,8 +1133,12 @@ function EditableNumberCell({
     if (!editing) setDraft(String(value ?? ""));
   }, [value, editing]);
 
-  const formatted =
-    decimals > 0
+  const formatted = currency
+    ? new Intl.NumberFormat("pt-PT", {
+        style: "currency",
+        currency: "EUR",
+      }).format(value ?? 0)
+    : decimals > 0
       ? new Intl.NumberFormat("pt-PT", {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
@@ -1119,7 +1154,11 @@ function EditableNumberCell({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === "F2") setEditing(true);
         }}
-        className="min-h-6 cursor-text rounded px-1 py-0.5 text-right text-sm tabular-nums hover:bg-muted/60"
+        className={cn(
+          "min-h-6 cursor-text rounded px-1 py-0.5 text-right text-sm tabular-nums hover:bg-muted/60",
+          tone === "receita" && "font-medium text-emerald-600 dark:text-emerald-400",
+          tone === "despesa" && "font-medium text-rose-600 dark:text-rose-400",
+        )}
       >
         {formatted}
       </div>
