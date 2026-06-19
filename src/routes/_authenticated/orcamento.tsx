@@ -875,6 +875,36 @@ function OrcamentoPage() {
 }
 
 /* -------------------------------------------------------------------------- */
+
+function SummaryCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "receita" | "despesa";
+}) {
+  return (
+    <div className="min-w-[140px] rounded-md border bg-card px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "mt-0.5 text-lg font-semibold tabular-nums",
+          tone === "receita"
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-rose-600 dark:text-rose-400",
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+
 /* Headers                                                                    */
 /* -------------------------------------------------------------------------- */
 
