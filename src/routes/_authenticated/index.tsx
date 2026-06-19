@@ -251,6 +251,31 @@ function Dashboard() {
   }, [data]);
 
   const anosLista = anos.length ? anos : [ano];
+  const anosAlvo: number[] = (data?.intervalo as any)?.anosAlvo ?? [ano];
+
+  const [peek, setPeek] = useState<PeekScope | null>(null);
+  const openMonth = (m: number, tipo?: "RECEITA" | "DESPESA") => {
+    setPeek({
+      titulo: `${MESES_LONGOS[m - 1]} ${ano}${tipo ? ` · ${tipo === "RECEITA" ? "Receitas" : "Despesas"}` : ""}`,
+      subtitulo: `Detalhes do mês`,
+      anos: [ano],
+      mesIni: m,
+      mesFim: m,
+      tipo: tipo ?? null,
+    });
+  };
+  const openProjeto = (projeto: string, nome: string, tipo?: "RECEITA" | "DESPESA") => {
+    setPeek({
+      titulo: nome,
+      subtitulo: `${descricaoPeriodo}${tipo ? ` · ${tipo === "RECEITA" ? "Receitas" : "Despesas"}` : ""}`,
+      anos: anosAlvo,
+      mesIni: (data?.intervalo as any)?.mesIni ?? 1,
+      mesFim: (data?.intervalo as any)?.mesFim ?? 12,
+      projeto,
+      tipo: tipo ?? null,
+    });
+  };
+
 
   const descricaoPeriodo = (() => {
     const anoTxt = anosCum ? `até ${ano}` : `${ano}`;
