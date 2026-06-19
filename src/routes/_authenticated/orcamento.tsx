@@ -46,6 +46,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -959,7 +960,71 @@ function OrcamentoPage() {
                 ))
               )}
             </TableBody>
+            {!isLoading && visibleRows.length > 0 && (() => {
+              const leafCols = table.getVisibleLeafColumns();
+              const sumCols = leafCols.filter(
+                (c) => (c.columnDef as any).aggregationFn === "sum",
+              );
+              if (sumCols.length === 0) return null;
+              const filteredRows = table.getFilteredRowModel().rows;
+              const totals = new Map<string, number>();
+              for (const c of sumCols) {
+                let s = 0;
+                for (const r of filteredRows) {
+                  const v = Number(r.getValue(c.id));
+                  if (Number.isFinite(v)) s += v;
+                }
+                totals.set(c.id, s);
+              }
+              let labelPlaced = false;
+              return (
+                <TableFooter className="sticky bottom-0 z-10 bg-muted/70 backdrop-blur">
+                  <TableRow className="border-t-2 hover:bg-transparent">
+                    {leafCols.map((c) => {
+                      const style = { width: c.getSize() };
+                      if (totals.has(c.id)) {
+                        const v = totals.get(c.id) ?? 0;
+                        return (
+                          <TableCell
+                            key={c.id}
+                            style={style}
+                            className={cn(
+                              "h-8 px-2 py-1 text-right font-semibold tabular-nums",
+                              v >= 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400",
+                            )}
+                          >
+                            {new Intl.NumberFormat("pt-PT", {
+                              style: "currency",
+                              currency: "EUR",
+                            }).format(v)}
+                          </TableCell>
+                        );
+                      }
+                      if (!labelPlaced) {
+                        labelPlaced = true;
+                        return (
+                          <TableCell
+                            key={c.id}
+                            style={style}
+                            className="h-8 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                          >
+                            Total
+                            <span className="ml-1 normal-case text-muted-foreground/70">
+                              ({filteredRows.length})
+                            </span>
+                          </TableCell>
+                        );
+                      }
+                      return <TableCell key={c.id} style={style} className="h-8 px-2 py-1" />;
+                    })}
+                  </TableRow>
+                </TableFooter>
+              );
+            })()}
           </Table>
+
         </div>
       </div>
     </div>
