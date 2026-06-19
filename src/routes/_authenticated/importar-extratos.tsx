@@ -33,6 +33,71 @@ interface FileParsed {
   result: ParseResult;
 }
 
+const PREVIEW_COLUMNS: ColumnDef<any, any>[] = [
+  {
+    accessorKey: "data",
+    header: sortHeader("Data"),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 110,
+    cell: ({ getValue }) => (getValue() as string) ?? "—",
+  },
+  {
+    accessorKey: "conta",
+    header: sortHeader("Conta"),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 100,
+    cell: ({ getValue }) => (
+      <span className="font-mono text-xs">{(getValue() as string) ?? "—"}</span>
+    ),
+  },
+  {
+    accessorKey: "descricao_conta",
+    header: sortHeader("Descrição"),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 260,
+    cell: ({ getValue }) => (getValue() as string) ?? "—",
+  },
+  {
+    accessorKey: "num_documento",
+    header: sortHeader("Nº Doc."),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 110,
+    cell: ({ getValue }) => (getValue() as string) ?? "—",
+  },
+  {
+    accessorKey: "centro_custo",
+    header: sortHeader("C. Custo"),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" },
+    size: 110,
+    cell: ({ getValue }) => (getValue() as string) ?? "—",
+  },
+  {
+    accessorKey: "debito",
+    header: sortHeader("Débito"),
+    filterFn: numFilterFn,
+    meta: { filterType: "number" },
+    size: 120,
+    cell: ({ getValue }) => (
+      <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" showZeroAsDash />
+    ),
+  },
+  {
+    accessorKey: "credito",
+    header: sortHeader("Crédito"),
+    filterFn: numFilterFn,
+    meta: { filterType: "number" },
+    size: 120,
+    cell: ({ getValue }) => (
+      <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" showZeroAsDash />
+    ),
+  },
+];
+
 function ImportarExtratosPage() {
   const qc = useQueryClient();
   const importarFn = useServerFn(importarExtrato);
