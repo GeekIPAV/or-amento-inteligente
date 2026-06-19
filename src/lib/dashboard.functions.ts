@@ -143,6 +143,25 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     }
 
 
+    // Mapping: orçamento.projeto -> conjunto de nome_display (via centro_custo_projetos + centros_custo_meta)
+    const { data: ccpRows } = await context.supabase
+      .from("centro_custo_projetos")
+      .select("centro_custo, nome_projeto");
+    const { data: metaRows } = await context.supabase
+      .from("centros_custo_meta")
+      .select("centro_custo, nome_display");
+    const nomeByCC = new Map<string, string>(
+      (metaRows ?? []).map((m: any) => [m.centro_custo, m.nome_display]),
+    );
+    const nomesByOrcProjeto = new Map<string, Set<string>>();
+    for (const row of (ccpRows ?? []) as Array<{ centro_custo: string; nome_projeto: string }>) {
+      const nome = nomeByCC.get(row.centro_custo) ?? row.centro_custo;
+      if (!nomesByOrcProjeto.has(row.nome_projeto)) {
+        nomesByOrcProjeto.set(row.nome_projeto, new Set());
+      }
+      nomesByOrcProjeto.get(row.nome_projeto)!.add(nome);
+    }
+
     // KPIs orçamentados (filtrados por meses)
     let receitaOrc = 0;
     let despesaOrc = 0;
@@ -151,7 +170,7 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       RECEITA: Array(12).fill(0) as number[],
       DESPESA: Array(12).fill(0) as number[],
     };
-    // Por projeto (filtrado)
+    // Por projeto (filtrado) — chaveado por nome_display
     const porProjeto = new Map<string, { projeto: string; orcado: number }>();
     // Por rubrica (filtrado) — uma linha por rubrica, sem split por tipo
     const porRubrica = new Map<string, { rubrica: string; orcado: number }>();
@@ -166,9 +185,14 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       if (m < mesIni || m > mesFim) continue;
       if (tipo === "RECEITA") receitaOrc += v;
       else despesaOrc += v;
-      const pe = porProjeto.get(o.projeto);
-      if (pe) pe.orcado += v;
-      else porProjeto.set(o.projeto, { projeto: o.projeto, orcado: v });
+
+      const nomes = nomesByOrcProjeto.get(o.projeto);
+      const targets = nomes && nomes.size > 0 ? Array.from(nomes) : ["(Sem projeto)"];
+      for (const nome of targets) {
+        const pe = porProjeto.get(nome);
+        if (pe) pe.orcado += v;
+        else porProjeto.set(nome, { projeto: nome, orcado: v });
+      }
 
       const rub = (o.rubrica ?? "").trim();
       if (rub) {
@@ -200,13 +224,13 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     }
 
 
-    // Realizados — KPIs e projetos (intervalo + multi-ano) — uma linha por projeto
+    // Realizados — KPIs e projetos (intervalo + multi-ano) — chaveado por nome_display
     let receitaReal = 0;
     let despesaReal = 0;
     type ProjRow = { projeto: string; nome: string; orcado: number; realizado: number };
     const projMap = new Map<string, ProjRow>();
     for (const p of porProjeto.values()) {
-      projMap.set(p.projeto, { ...p, nome: p.projeto, realizado: 0 });
+      projMap.set(p.projeto, { projeto: p.projeto, nome: p.projeto, orcado: p.orcado, realizado: 0 });
     }
 
     for (const y of anosAlvo) {
@@ -222,16 +246,6 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       }
     }
 
-
-    // Mapeamento de nomes
-    const { data: mapas } = await context.supabase
-      .from("centro_custo_projetos")
-      .select("centro_custo, nome_projeto");
-    const nomeByCC = new Map<string, string>((mapas ?? []).map((m: any) => [m.centro_custo, m.nome_projeto]));
-    for (const r of projMap.values()) {
-      const n = nomeByCC.get(r.projeto);
-      if (n) r.nome = n;
-    }
 
     // Realizados — por rubrica (intervalo + multi-ano), via match conta→rubrica.
     // Soma receita + despesa como valor absoluto executado por rubrica.
