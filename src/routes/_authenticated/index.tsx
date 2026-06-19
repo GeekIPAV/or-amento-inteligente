@@ -128,9 +128,11 @@ function ResumoProjetosGrid({
       searchPlaceholder="Pesquisar projetos…"
       emptyMessage={`Sem dados para ${ano}.`}
       maxHeight="60vh"
+      onRowClick={onRowClick}
     />
   );
 }
+
 
 
 
