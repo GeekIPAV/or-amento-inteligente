@@ -299,7 +299,7 @@ function Dashboard() {
     if (!data) return [];
     return data.projetos
       .map((p: any) => {
-        const desvio = p.tipo === "RECEITA" ? p.realizado - p.orcado : p.orcado - p.realizado;
+        const desvio = p.orcado - p.realizado;
         const exec = p.orcado === 0 ? 0 : p.realizado / p.orcado;
         return { ...p, desvio, exec };
       })
