@@ -86,20 +86,41 @@ function OrcamentoPage() {
   const insertFn = useServerFn(inserirLinhaOrcamento);
   const updateFn = useServerFn(atualizarLinhaOrcamento);
   const deleteFn = useServerFn(apagarLinhasOrcamento);
+  const listVersoesFn = useServerFn(listarVersoesOrcamento);
+  const criarVersaoFn = useServerFn(criarVersaoOrcamentoCsv);
+  const setAtivaFn = useServerFn(definirVersaoAtiva);
+  const apagarVersaoFn = useServerFn(apagarVersaoOrcamento);
+
+  const versoesQ = useQuery({
+    queryKey: ["orcamento-versoes"],
+    queryFn: () => listVersoesFn(),
+  });
+  const versoes = (versoesQ.data ?? []) as Array<{
+    id: string;
+    nome: string;
+    ativa: boolean;
+    created_at: string;
+  }>;
+  const versaoAtiva = versoes.find((v) => v.ativa) ?? null;
+  const [versaoSel, setVersaoSel] = useState<string | null>(null);
+  const versaoVisivel = versaoSel ?? versaoAtiva?.id ?? null;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["orcamentos"],
-    queryFn: () => listFn(),
+    queryKey: ["orcamentos", versaoVisivel],
+    queryFn: () => listFn({ data: { versaoId: versaoVisivel } }),
+    enabled: !!versaoVisivel,
   });
 
   const linhas = (data ?? []) as Linha[];
 
   const invalidarTudo = () => {
     qc.invalidateQueries({ queryKey: ["orcamentos"] });
+    qc.invalidateQueries({ queryKey: ["orcamento-versoes"] });
     qc.invalidateQueries({ queryKey: ["resumo"] });
     qc.invalidateQueries({ queryKey: ["anos"] });
     qc.invalidateQueries({ queryKey: ["meses-disponiveis"] });
   };
+
 
   const updateMut = useMutation({
     mutationFn: (vars: Linha) => updateFn({ data: vars }),
