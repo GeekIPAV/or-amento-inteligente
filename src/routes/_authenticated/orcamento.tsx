@@ -572,6 +572,47 @@ function OrcamentoPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
+                <Layers className="mr-2 h-4 w-4" />
+                Agrupar
+                {grouping.length > 0 && (
+                  <span className="ml-1 rounded bg-primary/10 px-1.5 text-xs text-primary">
+                    {grouping.length}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Agrupar por</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {GROUPABLE.map((g) => (
+                <DropdownMenuCheckboxItem
+                  key={g.id}
+                  checked={grouping.includes(g.id)}
+                  onCheckedChange={(v) => {
+                    setGrouping((prev) =>
+                      v ? [...prev.filter((x) => x !== g.id), g.id] : prev.filter((x) => x !== g.id),
+                    );
+                  }}
+                >
+                  {g.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              {grouping.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <button
+                    className="w-full px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted"
+                    onClick={() => setGrouping([])}
+                  >
+                    Limpar agrupamento
+                  </button>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
                 <Eye className="mr-2 h-4 w-4" /> Colunas
               </Button>
             </DropdownMenuTrigger>
