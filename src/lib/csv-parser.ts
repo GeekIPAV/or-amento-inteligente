@@ -203,6 +203,10 @@ export interface ParseOrcamentoResult {
   invalidas: number;
   total: number;
   anos: number[];
+  semMes: number;
+  semValor: number;
+  semAno: number;
+  cabecalhosEmFalta: string[];
 }
 
 const MESES_PT: Record<string, number> = {
@@ -248,22 +252,39 @@ export function parseOrcamentoCSV(text: string): ParseOrcamentoResult {
     rubrica: find(MAPA_ORC.rubrica),
   };
 
-  if (!cols.cc || !cols.mes || !cols.ano || !cols.valor) {
-    return { linhas: [], invalidas: 0, total: result.data.length, anos: [] };
+  const cabecalhosEmFalta: string[] = [];
+  if (!cols.cc) cabecalhosEmFalta.push("centro de custos / projeto");
+  if (!cols.valor) cabecalhosEmFalta.push("valor");
+
+  if (cabecalhosEmFalta.length > 0) {
+    return {
+      linhas: [], invalidas: 0, total: result.data.length, anos: [],
+      semMes: 0, semValor: 0, semAno: 0, cabecalhosEmFalta,
+    };
   }
 
   const buckets = new Map<string, OrcamentoLinhaAgg>();
   let invalidas = 0;
+  let semMes = 0;
+  let semValor = 0;
+  let semAno = 0;
   const anos = new Set<number>();
+  const anoFallback = new Date().getFullYear();
 
   for (const row of result.data) {
     if (!row || typeof row !== "object") continue;
-    const cc = String(row[cols.cc] ?? "").trim() || "(Sem projeto)";
-    const mesRaw = norm(String(row[cols.mes] ?? "")).slice(0, 10);
-    const ano = parseInt(String(row[cols.ano] ?? "").trim(), 10);
+    const cc = String(row[cols.cc!] ?? "").trim() || "(Sem projeto)";
+    const mesRaw = cols.mes ? norm(String(row[cols.mes] ?? "")).slice(0, 10) : "";
+    const anoRaw = cols.ano ? String(row[cols.ano] ?? "").trim() : "";
+    let ano = parseInt(anoRaw, 10);
+    if (!Number.isFinite(ano) || ano < 1900) {
+      ano = anoFallback;
+      semAno++;
+    }
     const mes = MESES_PT[mesRaw] ?? MESES_PT[mesRaw.slice(0, 3)] ?? null;
-    const valor = parseNumber(row[cols.valor]);
-    if (!Number.isFinite(ano) || ano < 1900 || !mes || valor === 0) {
+    const valor = parseNumber(row[cols.valor!]);
+    if (valor === 0) {
+      semValor++;
       invalidas++;
       continue;
     }
@@ -280,7 +301,14 @@ export function parseOrcamentoCSV(text: string): ParseOrcamentoResult {
       };
       buckets.set(key, bucket);
     }
-    bucket.meses[mes - 1] += Math.abs(valor);
+    if (mes) {
+      bucket.meses[mes - 1] += Math.abs(valor);
+    } else {
+      // Mês vazio/inválido: distribuir valor pelos 12 meses (assume total anual)
+      semMes++;
+      const parcela = Math.abs(valor) / 12;
+      for (let i = 0; i < 12; i++) bucket.meses[i] += parcela;
+    }
   }
 
   return {
@@ -288,5 +316,9 @@ export function parseOrcamentoCSV(text: string): ParseOrcamentoResult {
     invalidas,
     total: result.data.length,
     anos: Array.from(anos).sort(),
+    semMes,
+    semValor,
+    semAno,
+    cabecalhosEmFalta: [],
   };
 }
