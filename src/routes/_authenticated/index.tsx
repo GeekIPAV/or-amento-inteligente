@@ -159,6 +159,8 @@ function ResumoProjetosGrid({
 const searchSchema = z.object({
   ano: z.number().int().optional(),
   mes: z.number().int().min(1).max(12).optional(),
+  mesCum: z.boolean().optional(),
+  anosCum: z.boolean().optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -185,7 +187,7 @@ function KpiCard({
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
         <div className="flex justify-between text-muted-foreground">
-          <span className="whitespace-pre-wrap">Orçamentado{"\n"}</span><span>{currency.format(orcado)}</span>
+          <span>Orçamentado</span><span>{currency.format(orcado)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Desvio</span>
@@ -211,8 +213,10 @@ function Dashboard() {
 
   const hoje = new Date();
   const anoAtual = hoje.getFullYear();
-  const anoDefault = search.ano ?? (anos.length ? (anos.includes(anoAtual) ? anoAtual : anos[0]) : anoAtual);
-  const ano = anoDefault;
+  const ano = search.ano ?? (anos.length ? (anos.includes(anoAtual) ? anoAtual : anos[0]) : anoAtual);
+  const mes = search.mes ?? null;
+  const mesCum = search.mesCum ?? true;
+  const anosCum = search.anosCum ?? false;
 
   const mesesFn = useServerFn(mesesDisponiveis);
   const { data: mesesComDados = [] } = useQuery({
@@ -220,17 +224,18 @@ function Dashboard() {
     queryFn: () => mesesFn({ data: { ano } }),
   });
 
-  const mes = search.mes ?? mesesComDados.at(-1) ?? (ano === anoAtual ? hoje.getMonth() + 1 : 12);
-
   const resumoFn = useServerFn(resumoDashboard);
   const { data, isLoading } = useQuery({
-    queryKey: ["resumo", ano, mes],
-    queryFn: () => resumoFn({ data: { ano, mes } }),
+    queryKey: ["resumo", ano, mes, mesCum, anosCum],
+    queryFn: () => resumoFn({ data: { ano, mes: mes ?? undefined, mesCumulativo: mesCum, anosCumulativo: anosCum } }),
   });
 
-
-  const set = (patch: Partial<{ ano: number; mes: number }>) =>
-    navigate({ search: (prev: any) => ({ ...prev, ...patch }) });
+  const set = (patch: Partial<{ ano: number; mes: number | null; mesCum: boolean; anosCum: boolean }>) =>
+    navigate({ search: (prev: any) => {
+      const next: any = { ...prev, ...patch };
+      if (next.mes === null) delete next.mes;
+      return next;
+    } });
 
   const projetos = useMemo(() => {
     if (!data) return [];
@@ -245,32 +250,63 @@ function Dashboard() {
 
   const anosLista = anos.length ? anos : [ano];
 
+  const descricaoPeriodo = (() => {
+    const anoTxt = anosCum ? `até ${ano}` : `${ano}`;
+    if (mes == null) return `Ano completo ${anoTxt}`;
+    if (mesCum) return `Jan–${MESES_LONGOS[mes - 1]} ${anoTxt}`;
+    return `${MESES_LONGOS[mes - 1]} ${anoTxt}`;
+  })();
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Dashboard Principal</h1>
-          <p className="text-sm text-muted-foreground">Análise acumulada até {MESES_LONGOS[mes - 1]} de {ano}</p>
+          <p className="text-sm text-muted-foreground">{descricaoPeriodo}</p>
         </div>
-        <div className="flex gap-2">
-          <Select value={String(ano)} onValueChange={(v) => set({ ano: Number(v) })}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {anosLista.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={String(mes)} onValueChange={(v) => set({ mes: Number(v) })}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MESES_LONGOS.map((nome, i) => (
-                <SelectItem key={i} value={String(i + 1)}>
-                  {nome}{mesesComDados.length > 0 && !mesesComDados.includes(i + 1) ? " · sem movimentos" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Select value={String(ano)} onValueChange={(v) => set({ ano: Number(v) })}>
+              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {anosLista.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+              <Checkbox checked={anosCum} onCheckedChange={(v) => set({ anosCum: Boolean(v) })} />
+              Cumulativo
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select
+              value={mes == null ? "all" : String(mes)}
+              onValueChange={(v) => set({ mes: v === "all" ? null : Number(v) })}
+            >
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Ano inteiro</SelectItem>
+                {MESES_LONGOS.map((nome, i) => (
+                  <SelectItem key={i} value={String(i + 1)}>
+                    {nome}{mesesComDados.length > 0 && !mesesComDados.includes(i + 1) ? " · sem mov." : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <label className={cn(
+              "flex items-center gap-1.5 text-xs cursor-pointer select-none",
+              mes == null ? "text-muted-foreground/50" : "text-muted-foreground",
+            )}>
+              <Checkbox
+                checked={mesCum}
+                disabled={mes == null}
+                onCheckedChange={(v) => set({ mesCum: Boolean(v) })}
+              />
+              Cumulativo
+            </label>
+          </div>
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard titulo="Receita Realizada" orcado={data?.kpis.receitaOrc ?? 0} realizado={data?.kpis.receitaReal ?? 0} modo="receita" />
