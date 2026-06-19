@@ -394,6 +394,22 @@ export function DataGrid<T>({
 
   const rows = table.getRowModel().rows;
 
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const ROW_HEIGHT = 33; // px (h-8 + border)
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollerRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+  });
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const paddingBottom =
+    virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0;
+  const visibleColCount = table.getVisibleLeafColumns().length;
+
+
   return (
     <div className="space-y-3">
       {/* Toolbar */}
