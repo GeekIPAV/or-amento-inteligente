@@ -44,15 +44,31 @@ function CentrosCustoPage() {
   }, [data]);
 
   const mut = useMutation({
-    mutationFn: (v: { centro_custo: string; nome_projeto: string }) =>
-      saveFn({ data: v }),
-    onSuccess: () => {
-      toast.success("Nome do projeto guardado");
+    mutationFn: async (items: Array<{ centro_custo: string; nome_projeto: string }>) => {
+      for (const v of items) {
+        await saveFn({ data: v });
+      }
+      return items.length;
+    },
+    onSuccess: (n) => {
+      toast.success(
+        n === 1 ? "Nome do projeto guardado" : `${n} nomes de projeto guardados`,
+      );
       qc.invalidateQueries({ queryKey: ["centros-custo"] });
       qc.invalidateQueries({ queryKey: ["resumo"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const dirtyItems = useMemo(() => {
+    const map = new Map((data ?? []).map((r) => [r.centro_custo, r.nome_projeto]));
+    return Object.entries(nomes)
+      .filter(([cc, v]) => v.trim() !== "" && v !== map.get(cc))
+      .map(([centro_custo, nome_projeto]) => ({
+        centro_custo,
+        nome_projeto: nome_projeto.trim(),
+      }));
+  }, [nomes, data]);
 
   const rows = (data ?? []) as Row[];
 
@@ -85,6 +101,10 @@ function CentrosCustoPage() {
           const original = r.nome_projeto;
           const valor = nomes[r.centro_custo] ?? "";
           const dirty = valor.trim() !== "" && valor !== original;
+          const saveAll = () => {
+            if (dirtyItems.length === 0) return;
+            mut.mutate(dirtyItems);
+          };
           return (
             <div className="flex items-center gap-2">
               <Input
@@ -93,12 +113,7 @@ function CentrosCustoPage() {
                   setNomes((p) => ({ ...p, [r.centro_custo]: e.target.value }))
                 }
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && dirty) {
-                    mut.mutate({
-                      centro_custo: r.centro_custo,
-                      nome_projeto: valor.trim(),
-                    });
-                  }
+                  if (e.key === "Enter" && dirty) saveAll();
                 }}
                 className="h-7 text-sm"
               />
@@ -106,11 +121,11 @@ function CentrosCustoPage() {
                 size="sm"
                 variant={dirty ? "default" : "ghost"}
                 disabled={!dirty || mut.isPending}
-                onClick={() =>
-                  mut.mutate({
-                    centro_custo: r.centro_custo,
-                    nome_projeto: valor.trim(),
-                  })
+                onClick={saveAll}
+                title={
+                  dirtyItems.length > 1
+                    ? `Guardar ${dirtyItems.length} alterações`
+                    : "Guardar"
                 }
               >
                 <Save className="h-3.5 w-3.5" />
@@ -136,7 +151,7 @@ function CentrosCustoPage() {
         ),
       },
     ],
-    [nomes, mut],
+    [nomes, mut, dirtyItems],
   );
 
   return (
