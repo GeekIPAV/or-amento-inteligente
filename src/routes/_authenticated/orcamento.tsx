@@ -147,8 +147,88 @@ function OrcamentoPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar"),
   });
 
+  const uploadMut = useMutation({
+    mutationFn: (vars: { nome: string; linhas: Omit<Linha, "id">[] }) =>
+      criarVersaoFn({ data: { nome: vars.nome, ativar: true, linhas: vars.linhas } }),
+    onSuccess: (r: any) => {
+      invalidarTudo();
+      setVersaoSel(null);
+      toast.success(`Nova versão criada (${r?.total ?? 0} linhas)`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro no upload"),
+  });
 
-  const saveCell = (row: Linha, patch: Partial<Linha>) => {
+  const setAtivaMut = useMutation({
+    mutationFn: (id: string) => setAtivaFn({ data: { id } }),
+    onSuccess: () => {
+      invalidarTudo();
+      toast.success("Versão ativa atualizada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro a ativar versão"),
+  });
+
+  const apagarVersaoMut = useMutation({
+    mutationFn: (id: string) => apagarVersaoFn({ data: { id } }),
+    onSuccess: () => {
+      invalidarTudo();
+      setVersaoSel(null);
+      toast.success("Versão apagada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar versão"),
+  });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const onUploadCsv = (file: File) => {
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (h) => h.trim().toLowerCase(),
+      complete: (res) => {
+        try {
+          const parsed: Omit<Linha, "id">[] = [];
+          for (const [i, raw] of res.data.entries()) {
+            const projeto = (raw.projeto ?? "").trim();
+            if (!projeto) continue;
+            const tipoStr = (raw.tipo ?? "").trim().toUpperCase();
+            if (tipoStr !== "RECEITA" && tipoStr !== "DESPESA")
+              throw new Error(`Linha ${i + 2}: tipo deve ser RECEITA ou DESPESA`);
+            const ano = Number(raw.ano);
+            const mes = Number(raw.mes);
+            const valorStr = String(raw.valor ?? "0").replace(/\s/g, "").replace(",", ".");
+            const valor = Number(valorStr);
+            if (!Number.isInteger(ano)) throw new Error(`Linha ${i + 2}: ano inválido`);
+            if (!Number.isInteger(mes) || mes < 1 || mes > 12)
+              throw new Error(`Linha ${i + 2}: mês inválido`);
+            if (!Number.isFinite(valor)) throw new Error(`Linha ${i + 2}: valor inválido`);
+            parsed.push({
+              projeto,
+              descricao: (raw.descricao ?? "").trim() || null,
+              rubrica: (raw.rubrica ?? "").trim() || null,
+              tipo: tipoStr as "RECEITA" | "DESPESA",
+              ano,
+              mes,
+              valor,
+            });
+          }
+          if (parsed.length === 0) throw new Error("CSV sem linhas válidas");
+          const nome = new Date()
+            .toISOString()
+            .replace("T", " ")
+            .slice(0, 19);
+          uploadMut.mutate({ nome, linhas: parsed });
+        } catch (e: any) {
+          toast.error(e?.message ?? "Erro a ler CSV");
+        } finally {
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      },
+      error: (err) => {
+        toast.error(err.message ?? "Erro a ler CSV");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      },
+    });
+  };
+
     const next = { ...row, ...patch } as Linha;
     if (JSON.stringify(next) === JSON.stringify(row)) return;
     updateMut.mutate(next);
