@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import {
   listarRubricas,
-  listarContasDisponiveis,
+  listarContas,
   atribuirContasARubrica,
 } from "@/lib/contas-rubricas.functions";
 import { Button } from "@/components/ui/button";
@@ -20,21 +20,23 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Save, ChevronsUpDown, X } from "lucide-react";
 import { SummaryCard } from "@/components/data-grid";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { SortHeader, useSortableRows } from "@/components/sortable-table";
 
 export const Route = createFileRoute("/_authenticated/contas-rubricas")({
   component: ContasRubricasPage,
 });
 
-type Rubrica = { rubrica: string; contas: string[]; num_contas: number };
 type Conta = {
   conta: string;
   descricao_conta: string | null;
   rubrica: string | null;
+  linhas: number;
 };
 
 function ContasRubricasPage() {
   const rubricasFn = useServerFn(listarRubricas);
-  const contasFn = useServerFn(listarContasDisponiveis);
+  const contasFn = useServerFn(listarContas);
   const saveFn = useServerFn(atribuirContasARubrica);
   const qc = useQueryClient();
 
@@ -43,7 +45,7 @@ function ContasRubricasPage() {
     queryFn: () => rubricasFn(),
   });
   const { data: contas } = useQuery({
-    queryKey: ["contas-disponiveis"],
+    queryKey: ["contas-listagem"],
     queryFn: () => contasFn(),
   });
 
@@ -64,7 +66,7 @@ function ContasRubricasPage() {
     onSuccess: (n) => {
       toast.success(n === 1 ? "Rubrica guardada" : `${n} rubricas guardadas`);
       qc.invalidateQueries({ queryKey: ["rubricas-listagem"] });
-      qc.invalidateQueries({ queryKey: ["contas-disponiveis"] });
+      qc.invalidateQueries({ queryKey: ["contas-listagem"] });
       qc.invalidateQueries({ queryKey: ["contas-rubricas"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -90,6 +92,12 @@ function ContasRubricasPage() {
   }, [sel, original]);
 
   const contasList = contas ?? [];
+  const contaLinhas = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of contasList) m.set(c.conta, c.linhas ?? 0);
+    return m;
+  }, [contasList]);
+
   // map conta -> rubrica currently assigned in the LOCAL edits
   const contaToRubrica = useMemo(() => {
     const m = new Map<string, string>();
@@ -105,6 +113,19 @@ function ContasRubricasPage() {
 
   const filtered = (rubricas ?? []).filter((r) =>
     r.rubrica.toLowerCase().includes(filter.toLowerCase()),
+  );
+
+  const movimentosByRubrica = (rub: string) =>
+    (sel[rub] ?? []).reduce((a, c) => a + (contaLinhas.get(c) ?? 0), 0);
+
+  const { sorted, sort, toggle } = useSortableRows(
+    filtered,
+    {
+      rubrica: (r) => r.rubrica,
+      ncontas: (r) => (sel[r.rubrica]?.length ?? 0),
+      movimentos: (r) => movimentosByRubrica(r.rubrica),
+    },
+    { id: "movimentos", dir: "desc" },
   );
 
   const saveAll = () => {
@@ -170,65 +191,94 @@ function ContasRubricasPage() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="text-sm text-muted-foreground">A carregar…</div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-md border p-6 text-sm text-muted-foreground">
-          Nenhuma rubrica encontrada no orçamento.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((r) => {
-            const selected = sel[r.rubrica] ?? [];
-            const dirty = isDirty(r.rubrica);
-            return (
-              <div
-                key={r.rubrica}
-                className={`rounded-md border p-3 ${dirty ? "border-primary/60 bg-primary/5" : ""}`}
-              >
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="min-w-[200px] flex-shrink-0">
-                    <div className="font-medium">{r.rubrica}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {selected.length} conta{selected.length === 1 ? "" : "s"}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-1 flex-wrap items-center gap-1.5">
-                    {selected.map((c) => {
-                      const meta = contasList.find((x) => x.conta === c);
-                      return (
-                        <Badge
-                          key={c}
-                          variant="secondary"
-                          className="gap-1 font-mono text-xs"
-                          title={meta?.descricao_conta ?? ""}
-                        >
-                          {c}
-                          <button
-                            type="button"
-                            onClick={() => removeConta(r.rubrica, c)}
-                            className="ml-0.5 rounded hover:bg-foreground/10"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                    <ContasPicker
-                      contas={contasList}
-                      selected={selected}
-                      contaToRubrica={contaToRubrica}
-                      currentRubrica={r.rubrica}
-                      onToggle={(c) => toggleConta(r.rubrica, c)}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <SortHeader id="rubrica" sort={sort} onToggle={toggle} width={220}>
+                Rubrica
+              </SortHeader>
+              <SortHeader id="ncontas" sort={sort} onToggle={toggle} align="right" width={90}>
+                Contas
+              </SortHeader>
+              <SortHeader id="movimentos" sort={sort} onToggle={toggle} align="right" width={110}>
+                Movimentos
+              </SortHeader>
+              <SortHeader id="atribuidas" sort={sort} onToggle={toggle} sortable={false}>
+                Contas atribuídas
+              </SortHeader>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                  A carregar…
+                </TableCell>
+              </TableRow>
+            ) : sorted.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                  Nenhuma rubrica encontrada no orçamento.
+                </TableCell>
+              </TableRow>
+            ) : (
+              sorted.map((r) => {
+                const selected = sel[r.rubrica] ?? [];
+                const dirty = isDirty(r.rubrica);
+                const mov = movimentosByRubrica(r.rubrica);
+                return (
+                  <TableRow
+                    key={r.rubrica}
+                    className={dirty ? "bg-primary/5" : undefined}
+                  >
+                    <TableCell className="px-3 py-2 align-top font-medium">
+                      {r.rubrica}
+                    </TableCell>
+                    <TableCell className="px-3 py-2 align-top text-right tabular-nums">
+                      {selected.length}
+                    </TableCell>
+                    <TableCell className="px-3 py-2 align-top text-right tabular-nums">
+                      {mov}
+                    </TableCell>
+                    <TableCell className="px-3 py-2 align-top">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {selected.map((c) => {
+                          const meta = contasList.find((x) => x.conta === c);
+                          return (
+                            <Badge
+                              key={c}
+                              variant="secondary"
+                              className="gap-1 font-mono text-xs"
+                              title={meta?.descricao_conta ?? ""}
+                            >
+                              {c}
+                              <button
+                                type="button"
+                                onClick={() => removeConta(r.rubrica, c)}
+                                className="ml-0.5 rounded hover:bg-foreground/10"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          );
+                        })}
+                        <ContasPicker
+                          contas={contasList}
+                          selected={selected}
+                          contaToRubrica={contaToRubrica}
+                          currentRubrica={r.rubrica}
+                          onToggle={(c) => toggleConta(r.rubrica, c)}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
@@ -251,7 +301,6 @@ function ContasPicker({
 
   const filtered = contas.filter((c) => {
     const owner = contaToRubrica.get(c.conta);
-    // hide contas already assigned to another rubrica
     if (owner && owner !== currentRubrica) return false;
     if (!q) return true;
     const s = q.toLowerCase();
@@ -261,7 +310,6 @@ function ContasPicker({
     );
   });
 
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -270,7 +318,7 @@ function ContasPicker({
           Adicionar conta
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[420px] p-0" align="start">
+      <PopoverContent className="w-[440px] p-0" align="start">
         <div className="border-b p-2">
           <Input
             value={q}
@@ -295,8 +343,11 @@ function ContasPicker({
                     className="mt-0.5"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-xs">{c.conta}</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {c.linhas} mov.
+                      </span>
                     </div>
                     {c.descricao_conta && (
                       <div className="truncate text-xs text-muted-foreground">
