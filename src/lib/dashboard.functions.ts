@@ -297,6 +297,7 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
       mesFim: number;
       projeto?: string | null;
       tipo?: "RECEITA" | "DESPESA" | null;
+      rubrica?: string | null;
     }) =>
       z
         .object({
@@ -305,11 +306,12 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
           mesFim: z.number().int().min(1).max(12),
           projeto: z.string().nullish(),
           tipo: z.enum(["RECEITA", "DESPESA"]).nullish(),
+          rubrica: z.string().nullish(),
         })
         .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { anos, mesIni, mesFim, projeto, tipo } = data;
+    const { anos, mesIni, mesFim, projeto, tipo, rubrica } = data;
 
     // Lista mes_referencia para o intervalo
     const meses: string[] = [];
@@ -319,6 +321,17 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
       }
     }
 
+    // Se filtrado por rubrica, obter contas associadas
+    let contasRubrica: string[] | null = null;
+    if (rubrica) {
+      const { data: cr, error: errCR } = await context.supabase
+        .from("conta_rubricas")
+        .select("conta")
+        .eq("rubrica", rubrica);
+      if (errCR) throw new Error(errCR.message);
+      contasRubrica = (cr ?? []).map((r: any) => String(r.conta));
+    }
+
     // Transações (limitado a 1000 para o peek)
     let q = context.supabase
       .from("transacoes_extrato")
@@ -326,9 +339,16 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
       .in("mes_referencia", meses)
       .order("data", { ascending: false })
       .limit(1000);
-    if (tipo === "RECEITA") q = q.like("conta", "7%");
-    else if (tipo === "DESPESA") q = q.like("conta", "6%");
-    else q = q.or("conta.like.6%,conta.like.7%");
+    if (contasRubrica) {
+      if (contasRubrica.length === 0) q = q.eq("conta", "__none__");
+      else q = q.in("conta", contasRubrica);
+      if (tipo === "RECEITA") q = q.like("conta", "7%");
+      else if (tipo === "DESPESA") q = q.like("conta", "6%");
+    } else {
+      if (tipo === "RECEITA") q = q.like("conta", "7%");
+      else if (tipo === "DESPESA") q = q.like("conta", "6%");
+      else q = q.or("conta.like.6%,conta.like.7%");
+    }
     if (projeto) {
       if (projeto === "(Sem projeto)")
         q = q.or("centro_custo.is.null,centro_custo.eq.");
@@ -349,7 +369,7 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
     if (versaoIds.length > 0) {
       let oq = context.supabase
         .from("orcamentos")
-        .select("projeto, tipo, mes, ano, valor, descricao")
+        .select("projeto, tipo, mes, ano, valor, descricao, rubrica")
         .in("versao_id", versaoIds)
         .in("ano", anos)
         .gte("mes", mesIni)
@@ -358,6 +378,7 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
         .order("mes", { ascending: true });
       if (projeto) oq = oq.eq("projeto", projeto);
       if (tipo) oq = oq.eq("tipo", tipo);
+      if (rubrica) oq = oq.eq("rubrica", rubrica);
       const { data: o, error: errO } = await oq;
       if (errO) throw new Error(errO.message);
       orcRows = o ?? [];
@@ -382,6 +403,7 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
       })),
     };
   });
+
 
 
 export const anosDisponiveis = createServerFn({ method: "GET" })
