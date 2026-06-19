@@ -151,7 +151,7 @@ function CentrosCustoPage() {
         ),
       },
     ],
-    [nomes, mut],
+    [nomes, mut, dirtyItems],
   );
 
   return (
