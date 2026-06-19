@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { Save, ChevronsUpDown, X } from "lucide-react";
 import { SummaryCard } from "@/components/data-grid";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { SortHeader, useSortableRows } from "@/components/sortable-table";
+import { SortHeader, useSortableRows, useColumnWidths } from "@/components/sortable-table";
 
 
 export const Route = createFileRoute("/_authenticated/centros-custo")({
@@ -144,6 +144,17 @@ function CentrosCustoPage() {
     { id: "linhas", dir: "desc" },
   );
 
+  const { widths, startResize, resizingId } = useColumnWidths({
+    cc: 180,
+    linhas: 110,
+    nprojs: 90,
+    projetos: 360,
+    nome: 260,
+    acao: 80,
+  });
+
+
+
 
   const comNome = ccList.filter(
     (c) => (edits[c.centro_custo]?.nome_display ?? "").trim() !== "",
@@ -251,30 +262,31 @@ function CentrosCustoPage() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-md border">
-        <Table>
+      <div className="overflow-auto rounded-md border">
+        <Table style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <SortHeader id="cc" sort={sort} onToggle={toggle} width={180}>
+              <SortHeader id="cc" sort={sort} onToggle={toggle} width={widths.cc} onResizeStart={startResize} resizing={resizingId === "cc"}>
                 Centro de Custo
               </SortHeader>
-              <SortHeader id="linhas" sort={sort} onToggle={toggle} align="right" width={110}>
+              <SortHeader id="linhas" sort={sort} onToggle={toggle} align="right" width={widths.linhas} onResizeStart={startResize} resizing={resizingId === "linhas"}>
                 Movimentos
               </SortHeader>
-              <SortHeader id="nprojs" sort={sort} onToggle={toggle} align="right" width={90}>
+              <SortHeader id="nprojs" sort={sort} onToggle={toggle} align="right" width={widths.nprojs} onResizeStart={startResize} resizing={resizingId === "nprojs"}>
                 Projetos
               </SortHeader>
-              <SortHeader id="projetos" sort={sort} onToggle={toggle} sortable={false}>
+              <SortHeader id="projetos" sort={sort} onToggle={toggle} sortable={false} width={widths.projetos} onResizeStart={startResize} resizing={resizingId === "projetos"}>
                 Projetos do Orçamento
               </SortHeader>
-              <SortHeader id="nome" sort={sort} onToggle={toggle} width={260}>
+              <SortHeader id="nome" sort={sort} onToggle={toggle} width={widths.nome} onResizeStart={startResize} resizing={resizingId === "nome"}>
                 Nome do Projeto
               </SortHeader>
-              <SortHeader id="acao" sort={sort} onToggle={toggle} sortable={false} width={80}>
+              <SortHeader id="acao" sort={sort} onToggle={toggle} sortable={false} width={widths.acao} resizable={false}>
                 <span className="sr-only">Ação</span>
               </SortHeader>
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {isLoading ? (
               <TableRow>
