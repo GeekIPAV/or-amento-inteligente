@@ -351,9 +351,22 @@ function OrcamentoPage() {
           <TipoCell row={row.original} save={saveCell} />
         ),
       },
-      { ...numColumn("ano", "Ano", saveCell, 0), size: 90 },
-      { ...numColumn("mes", "Mês", saveCell, 0), size: 90 },
-      { ...numColumn("valor", "Valor", saveCell, 2), size: 130 },
+      { ...numColumn("ano", "Ano", saveCell, 0), size: 90, enableGrouping: true },
+      { ...numColumn("mes", "Mês", saveCell, 0), size: 90, enableGrouping: true },
+      {
+        ...numColumn("valor", "Valor", saveCell, 2),
+        size: 130,
+        enableGrouping: false,
+        aggregationFn: "sum",
+        aggregatedCell: ({ getValue }) => (
+          <div className="px-1 py-0.5 text-right text-sm font-semibold tabular-nums">
+            {new Intl.NumberFormat("pt-PT", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(Number(getValue() ?? 0))}
+          </div>
+        ),
+      },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
