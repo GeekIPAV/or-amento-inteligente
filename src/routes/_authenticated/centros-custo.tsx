@@ -134,19 +134,35 @@ function CentrosCustoPage() {
     (c) => (edits[c.centro_custo]?.nome_display ?? "").trim() !== "",
   ).length;
 
+  const projetoToCC = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [cc, e] of Object.entries(edits)) {
+      for (const p of e.projetos) m.set(p, cc);
+    }
+    return m;
+  }, [edits]);
+
+  const projetosPorAtribuir = useMemo(() => {
+    const lista = projetos ?? [];
+    return lista.filter((p) => !projetoToCC.has(p)).length;
+  }, [projetos, projetoToCC]);
+
   const toggleProjeto = (cc: string, projeto: string) => {
     setEdits((prev) => {
+      const next: typeof prev = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (k === cc) continue;
+        next[k] = { ...v, projetos: v.projetos.filter((p) => p !== projeto) };
+      }
       const cur = prev[cc] ?? { nome_display: "", projetos: [] };
       const has = cur.projetos.includes(projeto);
-      return {
-        ...prev,
-        [cc]: {
-          ...cur,
-          projetos: has
-            ? cur.projetos.filter((p) => p !== projeto)
-            : [...cur.projetos, projeto],
-        },
+      next[cc] = {
+        ...cur,
+        projetos: has
+          ? cur.projetos.filter((p) => p !== projeto)
+          : [...cur.projetos, projeto],
       };
+      return next;
     });
   };
 
