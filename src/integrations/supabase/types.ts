@@ -300,7 +300,7 @@ export type Database = {
         Returns: {
           centro_custo: string
           linhas: number
-          projeto: string
+          projetos: string[]
         }[]
       }
       centros_custo_listagem: {

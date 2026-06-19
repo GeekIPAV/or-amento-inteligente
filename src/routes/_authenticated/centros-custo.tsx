@@ -30,7 +30,7 @@ type Projeto = {
   centros_custo: string[];
   num_centros: number;
 };
-type CC = { centro_custo: string; projeto: string | null; linhas: number };
+type CC = { centro_custo: string; projetos: string[]; linhas: number };
 
 function CentrosCustoPage() {
   const projetosFn = useServerFn(listarProjetos);
@@ -96,16 +96,19 @@ function CentrosCustoPage() {
   }, [sel, original]);
 
   const ccList = ccs ?? [];
-  const ccToProjeto = useMemo(() => {
-    const m = new Map<string, string>();
+  const ccProjetos = useMemo(() => {
+    const m = new Map<string, Set<string>>();
     for (const [p, list] of Object.entries(sel)) {
-      for (const c of list) m.set(c, p);
+      for (const c of list) {
+        if (!m.has(c)) m.set(c, new Set());
+        m.get(c)!.add(p);
+      }
     }
     return m;
   }, [sel]);
 
   const totalCC = ccList.length;
-  const ccAtribuidos = ccToProjeto.size;
+  const ccAtribuidos = ccProjetos.size;
   const ccSemProjeto = totalCC - ccAtribuidos;
 
   const filtered = (projetos ?? []).filter((p) =>
@@ -119,15 +122,13 @@ function CentrosCustoPage() {
 
   const toggleCC = (projeto: string, cc: string) => {
     setSel((prev) => {
-      const next = { ...prev };
-      for (const k of Object.keys(next)) {
-        if (k !== projeto) next[k] = next[k].filter((c) => c !== cc);
-      }
-      const cur = next[projeto] ?? [];
-      next[projeto] = cur.includes(cc)
-        ? cur.filter((c) => c !== cc)
-        : [...cur, cc];
-      return next;
+      const cur = prev[projeto] ?? [];
+      return {
+        ...prev,
+        [projeto]: cur.includes(cc)
+          ? cur.filter((c) => c !== cc)
+          : [...cur, cc],
+      };
     });
   };
 
@@ -232,10 +233,9 @@ function CentrosCustoPage() {
                     <CCPicker
                       ccs={ccList}
                       selected={selected}
-                      ccToProjeto={ccToProjeto}
-                      currentProjeto={p.projeto}
                       onToggle={(c) => toggleCC(p.projeto, c)}
                     />
+
                   </div>
                 </div>
               </div>
@@ -250,22 +250,16 @@ function CentrosCustoPage() {
 function CCPicker({
   ccs,
   selected,
-  ccToProjeto,
-  currentProjeto,
   onToggle,
 }: {
   ccs: CC[];
   selected: string[];
-  ccToProjeto: Map<string, string>;
-  currentProjeto: string;
   onToggle: (cc: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
 
   const filtered = ccs.filter((c) => {
-    const owner = ccToProjeto.get(c.centro_custo);
-    if (owner && owner !== currentProjeto) return false;
     if (!q) return true;
     return c.centro_custo.toLowerCase().includes(q.toLowerCase());
   });

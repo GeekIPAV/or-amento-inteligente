@@ -21,9 +21,9 @@ export const listarCentrosCustoDisponiveis = createServerFn({ method: "GET" })
       "centros_custo_disponiveis",
     );
     if (error) throw new Error(error.message);
-    return (data ?? []) as Array<{
+    return (data ?? []) as unknown as Array<{
       centro_custo: string;
-      projeto: string | null;
+      projetos: string[];
       linhas: number;
     }>;
   });
