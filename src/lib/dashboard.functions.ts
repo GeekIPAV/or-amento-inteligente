@@ -153,12 +153,13 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     };
     // Por projeto (filtrado)
     const porProjeto = new Map<string, { projeto: string; tipo: "RECEITA" | "DESPESA"; orcado: number }>();
+    // Por rubrica (filtrado)
+    const porRubrica = new Map<string, { rubrica: string; tipo: "RECEITA" | "DESPESA"; orcado: number }>();
 
     for (const o of orcs) {
       const tipo = o.tipo as "RECEITA" | "DESPESA";
       const m = Number(o.mes);
       const v = Number(o.valor ?? 0);
-      // Gráfico mensal: soma de todos os anos alvo (quando cumulativo) ou só do ano selecionado
       if (m >= 1 && m <= 12) {
         orcMensal[tipo][m - 1] += v;
       }
@@ -169,7 +170,16 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       const existing = porProjeto.get(key);
       if (existing) existing.orcado += v;
       else porProjeto.set(key, { projeto: o.projeto, tipo, orcado: v });
+
+      const rub = (o.rubrica ?? "").trim();
+      if (rub) {
+        const rkey = `${rub}|${tipo}`;
+        const re = porRubrica.get(rkey);
+        if (re) re.orcado += v;
+        else porRubrica.set(rkey, { rubrica: rub, tipo, orcado: v });
+      }
     }
+
 
     // Realizados — mensal (gráfico): soma em todos os anos alvo
     const realMensal = {
