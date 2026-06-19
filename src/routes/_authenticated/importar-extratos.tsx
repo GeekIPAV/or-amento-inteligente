@@ -14,6 +14,14 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, X, Trash2 } from "lucide-react";
 import { currency, MESES_LONGOS } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { ColumnDef } from "@tanstack/react-table";
+import {
+  CurrencyCell,
+  DataGrid,
+  numFilterFn,
+  sortHeader,
+  textFilterFn,
+} from "@/components/data-grid";
 
 export const Route = createFileRoute("/_authenticated/importar-extratos")({
   head: () => ({ meta: [{ title: "Importar Extratos — Finanças" }] }),
