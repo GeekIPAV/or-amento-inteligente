@@ -312,8 +312,11 @@ function CentrosCustoPage() {
                         <ProjetoPicker
                           projetos={projetos ?? []}
                           selected={e.projetos}
+                          projetoToCC={projetoToCC}
+                          currentCC={c.centro_custo}
                           onToggle={(p) => toggleProjeto(c.centro_custo, p)}
                         />
+
                       </div>
                     </td>
                     <td className="px-3 py-2 align-top">
