@@ -250,6 +250,9 @@ function ContasPicker({
   const [q, setQ] = useState("");
 
   const filtered = contas.filter((c) => {
+    const owner = contaToRubrica.get(c.conta);
+    // hide contas already assigned to another rubrica
+    if (owner && owner !== currentRubrica) return false;
     if (!q) return true;
     const s = q.toLowerCase();
     return (
@@ -257,6 +260,7 @@ function ContasPicker({
       (c.descricao_conta ?? "").toLowerCase().includes(s)
     );
   });
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -280,8 +284,6 @@ function ContasPicker({
           <div className="p-1">
             {filtered.map((c) => {
               const isSel = selected.includes(c.conta);
-              const owner = contaToRubrica.get(c.conta);
-              const inOther = owner && owner !== currentRubrica;
               return (
                 <label
                   key={c.conta}
@@ -295,11 +297,6 @@ function ContasPicker({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs">{c.conta}</span>
-                      {inOther && (
-                        <span className="text-[10px] text-muted-foreground">
-                          (em: {owner})
-                        </span>
-                      )}
                     </div>
                     {c.descricao_conta && (
                       <div className="truncate text-xs text-muted-foreground">
@@ -310,6 +307,7 @@ function ContasPicker({
                 </label>
               );
             })}
+
             {filtered.length === 0 && (
               <div className="p-3 text-sm text-muted-foreground">
                 Sem contas.
