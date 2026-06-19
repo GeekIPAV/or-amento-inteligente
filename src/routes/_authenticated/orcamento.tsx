@@ -231,7 +231,14 @@ function OrcamentoPage() {
       criarVersaoFn({ data: { nome: vars.nome, ativar: true, linhas: vars.linhas } }),
     onSuccess: (r: any) => {
       invalidarTudo();
-      setVersaoSel(null);
+      if (typeof r?.ano === "number") {
+        setAnoSel(r.ano);
+        setVersaoSelPorAno((prev) => {
+          const next = { ...prev };
+          delete next[r.ano];
+          return next;
+        });
+      }
       toast.success(`Nova versão criada (${r?.total ?? 0} linhas)`);
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro no upload"),
