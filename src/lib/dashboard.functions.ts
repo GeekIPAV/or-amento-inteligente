@@ -152,7 +152,7 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       DESPESA: Array(12).fill(0) as number[],
     };
     // Por projeto (filtrado)
-    const porProjeto = new Map<string, { projeto: string; tipo: "RECEITA" | "DESPESA"; orcado: number }>();
+    const porProjeto = new Map<string, { projeto: string; orcado: number }>();
     // Por rubrica (filtrado) — uma linha por rubrica, sem split por tipo
     const porRubrica = new Map<string, { rubrica: string; orcado: number }>();
 
@@ -166,10 +166,9 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       if (m < mesIni || m > mesFim) continue;
       if (tipo === "RECEITA") receitaOrc += v;
       else despesaOrc += v;
-      const key = `${o.projeto}|${tipo}`;
-      const existing = porProjeto.get(key);
-      if (existing) existing.orcado += v;
-      else porProjeto.set(key, { projeto: o.projeto, tipo, orcado: v });
+      const pe = porProjeto.get(o.projeto);
+      if (pe) pe.orcado += v;
+      else porProjeto.set(o.projeto, { projeto: o.projeto, orcado: v });
 
       const rub = (o.rubrica ?? "").trim();
       if (rub) {
@@ -201,13 +200,13 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     }
 
 
-    // Realizados — KPIs e projetos (intervalo + multi-ano)
+    // Realizados — KPIs e projetos (intervalo + multi-ano) — uma linha por projeto
     let receitaReal = 0;
     let despesaReal = 0;
-    type ProjRow = { projeto: string; nome: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number };
+    type ProjRow = { projeto: string; nome: string; orcado: number; realizado: number };
     const projMap = new Map<string, ProjRow>();
     for (const p of porProjeto.values()) {
-      projMap.set(`${p.projeto}|${p.tipo}`, { ...p, nome: p.projeto, realizado: 0 });
+      projMap.set(p.projeto, { ...p, nome: p.projeto, realizado: 0 });
     }
 
     for (const y of anosAlvo) {
@@ -215,20 +214,14 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       for (const r of m.values()) {
         receitaReal += r.receita;
         despesaReal += r.despesa;
-        if (r.receita !== 0) {
-          const key = `${r.projeto}|RECEITA`;
-          const e = projMap.get(key);
-          if (e) { e.realizado += r.receita; e.nome = r.nome; }
-          else projMap.set(key, { projeto: r.projeto, nome: r.nome, tipo: "RECEITA", orcado: 0, realizado: r.receita });
-        }
-        if (r.despesa !== 0) {
-          const key = `${r.projeto}|DESPESA`;
-          const e = projMap.get(key);
-          if (e) { e.realizado += r.despesa; e.nome = r.nome; }
-          else projMap.set(key, { projeto: r.projeto, nome: r.nome, tipo: "DESPESA", orcado: 0, realizado: r.despesa });
-        }
+        const exec = Number(r.receita ?? 0) + Number(r.despesa ?? 0);
+        if (exec === 0) continue;
+        const e = projMap.get(r.projeto);
+        if (e) { e.realizado += exec; e.nome = r.nome; }
+        else projMap.set(r.projeto, { projeto: r.projeto, nome: r.nome, orcado: 0, realizado: exec });
       }
     }
+
 
     // Mapeamento de nomes
     const { data: mapas } = await context.supabase

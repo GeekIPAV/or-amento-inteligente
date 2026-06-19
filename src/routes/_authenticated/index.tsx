@@ -27,7 +27,6 @@ import {
 type ProjRow = {
   projeto: string;
   nome?: string | null;
-  tipo: "RECEITA" | "DESPESA";
   orcado: number;
   realizado: number;
   desvio: number;
@@ -66,43 +65,14 @@ function ResumoProjetosGrid({
       ),
     },
     {
-      accessorKey: "tipo",
-      header: sortHeader("Tipo"),
-      filterFn: textFilterFn,
-      meta: { filterType: "text" },
-      size: 110,
-      cell: ({ getValue }) => {
-        const t = getValue() as string;
-        return (
-          <span
-            className={cn(
-              "text-xs font-medium",
-              t === "RECEITA"
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-rose-600 dark:text-rose-400",
-            )}
-          >
-            {t === "RECEITA" ? "Receita" : "Despesa"}
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: "orcado",
       header: sortHeader("Orçamentado"),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
       size: 140,
       aggregationFn: "sum",
-      cell: ({ row, getValue }) => (
-        <CurrencyCell
-          value={Number(getValue() ?? 0)}
-          tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"}
-        />
-      ),
-      aggregatedCell: ({ getValue }) => (
-        <CurrencyCell value={Number(getValue() ?? 0)} />
-      ),
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
     },
     {
       accessorKey: "realizado",
@@ -111,15 +81,8 @@ function ResumoProjetosGrid({
       meta: { filterType: "number" },
       size: 140,
       aggregationFn: "sum",
-      cell: ({ row, getValue }) => (
-        <CurrencyCell
-          value={Number(getValue() ?? 0)}
-          tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"}
-        />
-      ),
-      aggregatedCell: ({ getValue }) => (
-        <CurrencyCell value={Number(getValue() ?? 0)} />
-      ),
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
     },
     {
       accessorKey: "desvio",
@@ -157,15 +120,17 @@ function ResumoProjetosGrid({
     <DataGrid<ProjRow>
       data={projetos}
       columns={columns}
-      getRowId={(r) => `${r.projeto}-${r.tipo}`}
+      getRowId={(r) => r.projeto}
       isLoading={isLoading}
       searchPlaceholder="Pesquisar projetos…"
-      groupable={[{ id: "tipo", label: "Tipo" }]}
       emptyMessage={`Sem dados para ${ano}.`}
       maxHeight="60vh"
     />
   );
 }
+
+
+
 
 
 function ResumoRubricasGrid({
@@ -334,7 +299,7 @@ function Dashboard() {
     if (!data) return [];
     return data.projetos
       .map((p: any) => {
-        const desvio = p.tipo === "RECEITA" ? p.realizado - p.orcado : p.orcado - p.realizado;
+        const desvio = p.orcado - p.realizado;
         const exec = p.orcado === 0 ? 0 : p.realizado / p.orcado;
         return { ...p, desvio, exec };
       })
@@ -522,53 +487,36 @@ function Dashboard() {
               <ResumoProjetosGrid projetos={projetos} isLoading={isLoading} ano={ano} />
             </TabsContent>
             <TabsContent value="grafico" className="mt-4">
-              <Tabs defaultValue="ambos">
-                <TabsList>
-                  <TabsTrigger value="ambos">Ambos</TabsTrigger>
-                  <TabsTrigger value="receita">Receita</TabsTrigger>
-                  <TabsTrigger value="despesa">Despesa</TabsTrigger>
-                </TabsList>
-                {(["ambos", "receita", "despesa"] as const).map((t) => {
-                  const dados = t === "ambos"
-                    ? projetos.map((p) => ({
-                        projeto: `${p.nome ?? p.projeto} (${p.tipo === "RECEITA" ? "R" : "D"})`,
+              {projetos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-12">Sem dados para apresentar.</p>
+              ) : (
+                <div style={{ height: Math.max(280, projetos.length * 36 + 60) }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={projetos.map((p) => ({
+                        projeto: p.nome ?? p.projeto,
                         Orçamentado: p.orcado,
                         Realizado: p.realizado,
-                        _tipo: p.tipo,
                         _projeto: p.projeto,
                         _nome: p.nome ?? p.projeto,
-                      }))
-                    : projetos
-                        .filter((p) => p.tipo === (t === "receita" ? "RECEITA" : "DESPESA"))
-                        .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado, _tipo: p.tipo, _projeto: p.projeto, _nome: p.nome ?? p.projeto }));
-                  const altura = Math.max(280, dados.length * 36 + 60);
-                  const corReal = t === "despesa" ? "hsl(0 70% 55%)" : "hsl(160 70% 45%)";
-                  return (
-                    <TabsContent key={t} value={t} className="mt-4">
-                      {dados.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-12">Sem dados para apresentar.</p>
-                      ) : (
-                        <div style={{ height: altura }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={dados} layout="vertical" margin={{ left: 20, right: 20 }}>
-                              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                              <XAxis type="number" tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v as number)} />
-                              <YAxis type="category" dataKey="projeto" width={180} />
-                              <Tooltip formatter={(v: number) => currency.format(v)} />
-                              <Legend />
-                              <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, d._tipo)} />
-                              <Bar dataKey="Realizado" fill={corReal} cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, d._tipo)} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      )}
-                    </TabsContent>
-                  );
-                })}
-
-              </Tabs>
+                      }))}
+                      layout="vertical"
+                      margin={{ left: 20, right: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis type="number" tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v as number)} />
+                      <YAxis type="category" dataKey="projeto" width={180} />
+                      <Tooltip formatter={(v: number) => currency.format(v)} />
+                      <Legend />
+                      <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome)} />
+                      <Bar dataKey="Realizado" fill="hsl(160 70% 45%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome)} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
+
         </CardContent>
       </Card>
 
