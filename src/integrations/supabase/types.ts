@@ -38,6 +38,27 @@ export type Database = {
         }
         Relationships: []
       }
+      centros_custo_meta: {
+        Row: {
+          centro_custo: string
+          created_at: string
+          nome_display: string
+          updated_at: string
+        }
+        Insert: {
+          centro_custo: string
+          created_at?: string
+          nome_display: string
+          updated_at?: string
+        }
+        Update: {
+          centro_custo?: string
+          created_at?: string
+          nome_display?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string
@@ -300,6 +321,7 @@ export type Database = {
         Returns: {
           centro_custo: string
           linhas: number
+          nome_display: string
           projetos: string[]
         }[]
       }
@@ -327,6 +349,14 @@ export type Database = {
           linhas: number
           rubrica: string
         }[]
+      }
+      guardar_centro_custo: {
+        Args: {
+          p_centro_custo: string
+          p_nome_display: string
+          p_projetos: string[]
+        }
+        Returns: undefined
       }
       has_role: {
         Args: {
