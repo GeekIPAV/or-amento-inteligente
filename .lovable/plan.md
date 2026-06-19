@@ -1,33 +1,43 @@
-Reaproveitar a tabela existente `centro_custo_projetos` e transformar a página `/centros-custo` no mesmo padrão de **Contas → Rubricas**, mas com **Projetos (do orçamento) → Centros de Custo**.
+Página `/centros-custo` com **3 campos por linha**:
 
-A coluna `nome_projeto` passa a guardar o **projeto do orçamento** (`orcamentos.projeto`) em vez de texto livre. Cada centro de custo só pode estar atribuído a um projeto (já garantido pela PK `centro_custo`).
+| Centro de Custo (movimentos) | Projetos do Orçamento (multi-select) | Nome do Projeto (texto livre) |
 
-## Base de dados (migration — sem tabela nova)
+O **Nome do Projeto** é o rótulo que aparece em todo o lado (dashboard, gráficos). A coluna de Projetos do Orçamento serve para "puxar" os valores orçamentados desses projetos para este Nome do Projeto.
 
-1. **Funções SQL novas** (espelham as de rubricas, usando `centro_custo_projetos`):
-   - `projetos_disponiveis()` → distinct `projeto` de `orcamentos`
-   - `centros_custo_disponiveis()` → distinct CC de `transacoes_extrato` + projeto atribuído (LEFT JOIN `centro_custo_projetos`)
-   - `projetos_listagem()` → cada projeto + array de CCs atribuídos + contagem
-   - `atribuir_centros_custo_projeto(p_projeto, p_centros[])` → upsert no `centro_custo_projetos` (campo `nome_projeto = p_projeto`), apaga os CCs que deixaram de pertencer
+## Backend
 
-2. **Atualizar `resumo_transacoes_projeto(p_ano, p_mes)`** para agrupar pelo `nome_projeto` da tabela `centro_custo_projetos` (em vez de pelo `centro_custo` cru). CCs sem mapeamento → `(Sem projeto)`.
+1. **Nova tabela `centros_custo_meta`** (1 linha por CC, guarda o nome de display):
+   - `centro_custo text PRIMARY KEY`
+   - `nome_display text not null`
+   - timestamps + trigger updated_at
+   - RLS + GRANTs standard (mesmo padrão de `centro_custo_projetos`)
 
-3. `centros_custo_listagem()` mantém-se (usada na listagem antiga, ainda útil como referência) — sem alterações destrutivas.
+2. A tabela `centro_custo_projetos` continua a guardar a relação muitos-para-muitos CC ↔ projetos do orçamento (já alterada).
+
+3. **RPCs novas/atualizadas**:
+   - `centros_custo_disponiveis()` passa a devolver `(centro_custo, nome_display, projetos[], linhas)` (LEFT JOIN com `centros_custo_meta`; quando vazio, devolve o próprio CC).
+   - `guardar_centro_custo(p_centro_custo, p_nome_display, p_projetos[])` — upsert do nome em `centros_custo_meta` + sincronização das ligações em `centro_custo_projetos` para esse CC.
+
+4. **`resumo_transacoes_projeto(p_ano, p_mes)`** — passa a agregar pelo `nome_display` da tabela `centros_custo_meta` (fallback: o próprio CC ou `(Sem projeto)` se a CC vier vazia dos movimentos). É o nome que aparece no dashboard.
+
+5. **Orçamentado por projeto no dashboard** — em `src/lib/dashboard.functions.ts` o `orcado` por projeto passa a ser somado pelo `nome_display`: para cada linha do orçamento, encontrar todos os CCs que têm esse `projeto` em `centro_custo_projetos`, obter o `nome_display` desses CCs, e somar o orçamento ao(s) `nome_display` correspondente(s). Quando um projeto do orçamento não está mapeado a nenhum CC, vai para `(Sem projeto)`.
 
 ## Frontend
 
-4. **Substituir `src/routes/_authenticated/centros-custo.tsx`** pelo padrão de `contas-rubricas.tsx`:
-   - Linhas = projetos do orçamento
-   - Por linha: popover com checkboxes dos CCs disponíveis (com indicação se já estão noutro projeto — atribuir move-os)
-   - Pesquisa, badges, save com dirty-tracking
-   - Título: "Projetos → Centros de Custo"
+6. **Reescrever `src/routes/_authenticated/centros-custo.tsx`** como DataGrid com 3 colunas:
+   - `centro_custo` (read-only, mono)
+   - `projetos` (popover multi-select da lista `listarProjetos()` do orçamento; badges com X para remover)
+   - `nome_display` (Input editável)
+   - Botão "Gravar" por linha + gravar todas com dirty tracking
+   - Pesquisa e summary cards (Total CCs, com nome, sem nome)
 
-5. **Server functions** em `src/lib/centros-custo.functions.ts`:
-   - Substituir `listarCentrosCusto` / `guardarNomeProjeto` por `listarProjetos`, `listarCentrosCustoDisponiveis`, `atribuirCentrosCustoAProjeto` (chamam as novas RPCs).
-
-6. **Dashboard** — já chama `resumo_transacoes_projeto`; passa a usar o novo cruzamento automaticamente, sem mudanças de UI.
+7. **Server functions** em `src/lib/centros-custo.functions.ts`:
+   - Manter `listarProjetos` (alimenta o picker)
+   - Atualizar `listarCentrosCustoDisponiveis` para incluir `nome_display`
+   - Nova `guardarCentroCusto({ centro_custo, nome_display, projetos[] })` que chama a RPC `guardar_centro_custo`
+   - Remover `atribuirCentrosCustoAProjeto` (deixa de ser usada)
 
 ## Notas
 
-- A entrada de menu mantém-se ("Centros de Custo") — só a UX e a semântica mudam.
-- Migrations não tocam em dados existentes de `centro_custo_projetos`; os registos que tenham `nome_projeto` que não bata certo com nenhum projeto do orçamento simplesmente não aparecem listados nesse projeto (e os CCs ficam disponíveis para reatribuir).
+- A migração não toca em dados existentes; CCs sem `centros_custo_meta` aparecem com `nome_display` = código do CC até serem editados.
+- Por agora não removo a tabela `centro_custo_projetos`; ela continua a ser a fonte da ligação CC → projetos do orçamento.
