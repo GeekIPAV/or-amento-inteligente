@@ -47,11 +47,14 @@ function ResumoProjetosGrid({
   projetos,
   isLoading,
   ano,
+  onRowClick,
 }: {
   projetos: ProjRow[];
   isLoading: boolean;
   ano: number;
+  onRowClick?: (p: ProjRow) => void;
 }) {
+
   const columns: ColumnDef<ProjRow, any>[] = [
     {
       id: "nome",
@@ -125,9 +128,11 @@ function ResumoProjetosGrid({
       searchPlaceholder="Pesquisar projetos…"
       emptyMessage={`Sem dados para ${ano}.`}
       maxHeight="60vh"
+      onRowClick={onRowClick}
     />
   );
 }
+
 
 
 
@@ -137,11 +142,14 @@ function ResumoRubricasGrid({
   rubricas,
   isLoading,
   ano,
+  onRowClick,
 }: {
   rubricas: RubRow[];
   isLoading: boolean;
   ano: number;
+  onRowClick?: (r: RubRow) => void;
 }) {
+
   const columns: ColumnDef<RubRow, any>[] = [
     {
       accessorKey: "rubrica",
@@ -206,7 +214,9 @@ function ResumoRubricasGrid({
       searchPlaceholder="Pesquisar rubricas…"
       emptyMessage={`Sem rubricas com correspondência para ${ano}. Atribui contas às rubricas em Rubricas / Contas.`}
       maxHeight="60vh"
+      onRowClick={onRowClick}
     />
+
   );
 }
 
@@ -345,6 +355,17 @@ function Dashboard() {
       tipo: tipo ?? null,
     });
   };
+  const openRubrica = (rubrica: string) => {
+    setPeek({
+      titulo: rubrica,
+      subtitulo: `Rubrica · ${descricaoPeriodo}`,
+      anos: anosAlvo,
+      mesIni: (data?.intervalo as any)?.mesIni ?? 1,
+      mesFim: (data?.intervalo as any)?.mesFim ?? 12,
+      rubrica,
+    });
+  };
+
 
 
   const descricaoPeriodo = (() => {
@@ -484,7 +505,7 @@ function Dashboard() {
               <TabsTrigger value="grafico">Gráfico</TabsTrigger>
             </TabsList>
             <TabsContent value="tabela" className="mt-4">
-              <ResumoProjetosGrid projetos={projetos} isLoading={isLoading} ano={ano} />
+              <ResumoProjetosGrid projetos={projetos} isLoading={isLoading} ano={ano} onRowClick={(p) => openProjeto(p.projeto, p.nome ?? p.projeto)} />
             </TabsContent>
             <TabsContent value="grafico" className="mt-4">
               {projetos.length === 0 ? (
@@ -534,7 +555,7 @@ function Dashboard() {
               <TabsTrigger value="grafico">Gráfico</TabsTrigger>
             </TabsList>
             <TabsContent value="tabela" className="mt-4">
-              <ResumoRubricasGrid rubricas={rubricas} isLoading={isLoading} ano={ano} />
+              <ResumoRubricasGrid rubricas={rubricas} isLoading={isLoading} ano={ano} onRowClick={(r) => openRubrica(r.rubrica)} />
             </TabsContent>
             <TabsContent value="grafico" className="mt-4">
               {rubricas.length === 0 ? (

@@ -314,6 +314,7 @@ export interface DataGridProps<T> {
   isLoading?: boolean;
   maxHeight?: string;
   emptyMessage?: string;
+  onRowClick?: (row: T) => void;
 }
 
 export function DataGrid<T>({
@@ -330,7 +331,9 @@ export function DataGrid<T>({
   isLoading = false,
   maxHeight = "72vh",
   emptyMessage = "Sem dados.",
+  onRowClick,
 }: DataGridProps<T>) {
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -643,9 +646,16 @@ export function DataGrid<T>({
                         className={cn(
                           "h-8 border-b border-border/50",
                           row.getIsGrouped() && "bg-muted/40 font-medium",
+                          onRowClick && !row.getIsGrouped() && "cursor-pointer hover:bg-muted/50",
                         )}
                         style={{ height: ROW_HEIGHT }}
+                        onClick={
+                          onRowClick && !row.getIsGrouped()
+                            ? () => onRowClick(row.original)
+                            : undefined
+                        }
                       >
+
                         {row.getVisibleCells().map((cell) => {
                           const isGrouped = cell.getIsGrouped();
                           const isAggregated = cell.getIsAggregated();
