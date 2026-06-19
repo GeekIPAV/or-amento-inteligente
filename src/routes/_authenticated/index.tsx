@@ -343,14 +343,15 @@ function Dashboard() {
 
   const rubricas: RubRow[] = useMemo(() => {
     if (!data || !(data as any).rubricas) return [];
-    return ((data as any).rubricas as Array<{ rubrica: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number }>)
+    return ((data as any).rubricas as Array<{ rubrica: string; orcado: number; realizado: number }>)
       .map((r) => {
-        const desvio = r.tipo === "RECEITA" ? r.realizado - r.orcado : r.orcado - r.realizado;
+        const desvio = r.orcado - r.realizado;
         const exec = r.orcado === 0 ? 0 : r.realizado / r.orcado;
         return { ...r, desvio, exec };
       })
       .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
   }, [data]);
+
 
 
   const anosLista = anos.length ? anos : [ano];
