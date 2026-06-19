@@ -1117,10 +1117,14 @@ function EditableNumberCell({
   value,
   onSave,
   decimals,
+  currency,
+  tone,
 }: {
   value: number;
   onSave: (v: number) => void;
   decimals: number;
+  currency?: boolean;
+  tone?: "receita" | "despesa";
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value ?? ""));
@@ -1129,8 +1133,12 @@ function EditableNumberCell({
     if (!editing) setDraft(String(value ?? ""));
   }, [value, editing]);
 
-  const formatted =
-    decimals > 0
+  const formatted = currency
+    ? new Intl.NumberFormat("pt-PT", {
+        style: "currency",
+        currency: "EUR",
+      }).format(value ?? 0)
+    : decimals > 0
       ? new Intl.NumberFormat("pt-PT", {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
@@ -1146,7 +1154,11 @@ function EditableNumberCell({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === "F2") setEditing(true);
         }}
-        className="min-h-6 cursor-text rounded px-1 py-0.5 text-right text-sm tabular-nums hover:bg-muted/60"
+        className={cn(
+          "min-h-6 cursor-text rounded px-1 py-0.5 text-right text-sm tabular-nums hover:bg-muted/60",
+          tone === "receita" && "font-medium text-emerald-600 dark:text-emerald-400",
+          tone === "despesa" && "font-medium text-rose-600 dark:text-rose-400",
+        )}
       >
         {formatted}
       </div>
