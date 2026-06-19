@@ -133,6 +133,18 @@ function CentrosCustoPage() {
     );
   });
 
+  const { sorted, sort, toggle } = useSortableRows(
+    filtered,
+    {
+      cc: (c) => c.centro_custo,
+      linhas: (c) => c.linhas,
+      nprojs: (c) => (edits[c.centro_custo]?.projetos.length ?? 0),
+      nome: (c) => edits[c.centro_custo]?.nome_display ?? "",
+    },
+    { id: "linhas", dir: "desc" },
+  );
+
+
   const comNome = ccList.filter(
     (c) => (edits[c.centro_custo]?.nome_display ?? "").trim() !== "",
   ).length;
