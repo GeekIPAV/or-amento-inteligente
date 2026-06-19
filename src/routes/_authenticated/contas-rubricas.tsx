@@ -200,24 +200,25 @@ function ContasRubricasPage() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-md border">
-        <Table>
+      <div className="overflow-auto rounded-md border">
+        <Table style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <SortHeader id="rubrica" sort={sort} onToggle={toggle} width={220}>
+              <SortHeader id="rubrica" sort={sort} onToggle={toggle} width={widths.rubrica} onResizeStart={startResize} resizing={resizingId === "rubrica"}>
                 Rubrica
               </SortHeader>
-              <SortHeader id="ncontas" sort={sort} onToggle={toggle} align="right" width={90}>
+              <SortHeader id="ncontas" sort={sort} onToggle={toggle} align="right" width={widths.ncontas} onResizeStart={startResize} resizing={resizingId === "ncontas"}>
                 Contas
               </SortHeader>
-              <SortHeader id="movimentos" sort={sort} onToggle={toggle} align="right" width={110}>
+              <SortHeader id="movimentos" sort={sort} onToggle={toggle} align="right" width={widths.movimentos} onResizeStart={startResize} resizing={resizingId === "movimentos"}>
                 Movimentos
               </SortHeader>
-              <SortHeader id="atribuidas" sort={sort} onToggle={toggle} sortable={false}>
+              <SortHeader id="atribuidas" sort={sort} onToggle={toggle} sortable={false} width={widths.atribuidas} onResizeStart={startResize} resizing={resizingId === "atribuidas"}>
                 Contas atribuídas
               </SortHeader>
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {isLoading ? (
               <TableRow>
