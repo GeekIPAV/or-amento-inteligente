@@ -27,7 +27,6 @@ import {
 type ProjRow = {
   projeto: string;
   nome?: string | null;
-  tipo: "RECEITA" | "DESPESA";
   orcado: number;
   realizado: number;
   desvio: number;
@@ -66,43 +65,14 @@ function ResumoProjetosGrid({
       ),
     },
     {
-      accessorKey: "tipo",
-      header: sortHeader("Tipo"),
-      filterFn: textFilterFn,
-      meta: { filterType: "text" },
-      size: 110,
-      cell: ({ getValue }) => {
-        const t = getValue() as string;
-        return (
-          <span
-            className={cn(
-              "text-xs font-medium",
-              t === "RECEITA"
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-rose-600 dark:text-rose-400",
-            )}
-          >
-            {t === "RECEITA" ? "Receita" : "Despesa"}
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: "orcado",
       header: sortHeader("Orçamentado"),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
       size: 140,
       aggregationFn: "sum",
-      cell: ({ row, getValue }) => (
-        <CurrencyCell
-          value={Number(getValue() ?? 0)}
-          tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"}
-        />
-      ),
-      aggregatedCell: ({ getValue }) => (
-        <CurrencyCell value={Number(getValue() ?? 0)} />
-      ),
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
     },
     {
       accessorKey: "realizado",
@@ -111,15 +81,8 @@ function ResumoProjetosGrid({
       meta: { filterType: "number" },
       size: 140,
       aggregationFn: "sum",
-      cell: ({ row, getValue }) => (
-        <CurrencyCell
-          value={Number(getValue() ?? 0)}
-          tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"}
-        />
-      ),
-      aggregatedCell: ({ getValue }) => (
-        <CurrencyCell value={Number(getValue() ?? 0)} />
-      ),
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
     },
     {
       accessorKey: "desvio",
@@ -157,15 +120,17 @@ function ResumoProjetosGrid({
     <DataGrid<ProjRow>
       data={projetos}
       columns={columns}
-      getRowId={(r) => `${r.projeto}-${r.tipo}`}
+      getRowId={(r) => r.projeto}
       isLoading={isLoading}
       searchPlaceholder="Pesquisar projetos…"
-      groupable={[{ id: "tipo", label: "Tipo" }]}
       emptyMessage={`Sem dados para ${ano}.`}
       maxHeight="60vh"
     />
   );
 }
+
+
+
 
 
 function ResumoRubricasGrid({
