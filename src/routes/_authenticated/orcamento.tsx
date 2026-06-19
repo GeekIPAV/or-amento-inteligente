@@ -299,7 +299,10 @@ function OrcamentoPage() {
         enableSorting: false,
         enableHiding: false,
         enableColumnFilter: false,
+        enableResizing: false,
         size: 36,
+        minSize: 36,
+        maxSize: 36,
         header: ({ table }) => (
           <Checkbox
             checked={
@@ -321,21 +324,22 @@ function OrcamentoPage() {
           />
         ),
       },
-      textColumn("projeto", "Projeto", saveCell),
-      textColumn("descricao", "Descrição", saveCell),
-      textColumn("rubrica", "Rubrica", saveCell),
+      { ...textColumn("projeto", "Projeto", saveCell), size: 200 },
+      { ...textColumn("descricao", "Descrição", saveCell), size: 280 },
+      { ...textColumn("rubrica", "Rubrica", saveCell), size: 180 },
       {
         accessorKey: "tipo",
         header: sortHeader("Tipo"),
         filterFn: textFilterFn,
         meta: { filterType: "text" as const },
+        size: 110,
         cell: ({ row }) => (
           <TipoCell row={row.original} save={saveCell} />
         ),
       },
-      numColumn("ano", "Ano", saveCell, 0),
-      numColumn("mes", "Mês", saveCell, 0),
-      numColumn("valor", "Valor", saveCell, 2),
+      { ...numColumn("ano", "Ano", saveCell, 0), size: 90 },
+      { ...numColumn("mes", "Mês", saveCell, 0), size: 90 },
+      { ...numColumn("valor", "Valor", saveCell, 2), size: 130 },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
