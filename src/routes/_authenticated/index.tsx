@@ -505,7 +505,7 @@ function Dashboard() {
               <TabsTrigger value="grafico">Gráfico</TabsTrigger>
             </TabsList>
             <TabsContent value="tabela" className="mt-4">
-              <ResumoProjetosGrid projetos={projetos} isLoading={isLoading} ano={ano} />
+              <ResumoProjetosGrid projetos={projetos} isLoading={isLoading} ano={ano} onRowClick={(p) => openProjeto(p.projeto, p.nome ?? p.projeto)} />
             </TabsContent>
             <TabsContent value="grafico" className="mt-4">
               {projetos.length === 0 ? (
