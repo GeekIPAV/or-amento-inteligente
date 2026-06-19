@@ -214,7 +214,9 @@ function ResumoRubricasGrid({
       searchPlaceholder="Pesquisar rubricas…"
       emptyMessage={`Sem rubricas com correspondência para ${ano}. Atribui contas às rubricas em Rubricas / Contas.`}
       maxHeight="60vh"
+      onRowClick={onRowClick}
     />
+
   );
 }
 
