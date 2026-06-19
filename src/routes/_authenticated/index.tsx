@@ -168,7 +168,113 @@ function ResumoProjetosGrid({
 }
 
 
+function ResumoRubricasGrid({
+  rubricas,
+  isLoading,
+  ano,
+}: {
+  rubricas: RubRow[];
+  isLoading: boolean;
+  ano: number;
+}) {
+  const columns: ColumnDef<RubRow, any>[] = [
+    {
+      accessorKey: "rubrica",
+      header: sortHeader("Rubrica"),
+      filterFn: textFilterFn,
+      meta: { filterType: "text" },
+      size: 240,
+      cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
+    },
+    {
+      accessorKey: "tipo",
+      header: sortHeader("Tipo"),
+      filterFn: textFilterFn,
+      meta: { filterType: "text" },
+      size: 110,
+      cell: ({ getValue }) => {
+        const t = getValue() as string;
+        return (
+          <span
+            className={cn(
+              "text-xs font-medium",
+              t === "RECEITA"
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-rose-600 dark:text-rose-400",
+            )}
+          >
+            {t === "RECEITA" ? "Receita" : "Despesa"}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "orcado",
+      header: sortHeader("Orçamentado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ row, getValue }) => (
+        <CurrencyCell value={Number(getValue() ?? 0)} tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"} />
+      ),
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+    },
+    {
+      accessorKey: "realizado",
+      header: sortHeader("Realizado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ row, getValue }) => (
+        <CurrencyCell value={Number(getValue() ?? 0)} tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"} />
+      ),
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+    },
+    {
+      accessorKey: "desvio",
+      header: sortHeader("Desvio"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+    },
+    {
+      accessorKey: "exec",
+      header: sortHeader("Execução"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 110,
+      enableGrouping: false,
+      cell: ({ row, getValue }) =>
+        row.original.orcado === 0 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <div className="text-right tabular-nums">{percent(Number(getValue() ?? 0))}</div>
+        ),
+    },
+  ];
+
+  return (
+    <DataGrid<RubRow>
+      data={rubricas}
+      columns={columns}
+      getRowId={(r) => `${r.rubrica}-${r.tipo}`}
+      isLoading={isLoading}
+      searchPlaceholder="Pesquisar rubricas…"
+      groupable={[{ id: "tipo", label: "Tipo" }]}
+      emptyMessage={`Sem rubricas com correspondência para ${ano}. Atribui contas às rubricas em Rubricas / Contas.`}
+      maxHeight="60vh"
+    />
+  );
+}
+
+
 const searchSchema = z.object({
+
   ano: z.number().int().optional(),
   mes: z.number().int().min(1).max(12).optional(),
   mesCum: z.boolean().optional(),
