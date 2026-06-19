@@ -6,6 +6,7 @@ import {
   ColumnDef,
   ColumnFiltersState,
   ColumnOrderState,
+  ColumnSizingState,
   FilterFn,
   SortingState,
   VisibilityState,
@@ -286,6 +287,9 @@ function OrcamentoPage() {
   ]);
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [globalFilter, setGlobalFilter] = useState("");
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+  const dragColRef = useRef<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
   const columns = useMemo<ColumnDef<Linha>[]>(
     () => [
@@ -294,7 +298,10 @@ function OrcamentoPage() {
         enableSorting: false,
         enableHiding: false,
         enableColumnFilter: false,
+        enableResizing: false,
         size: 36,
+        minSize: 36,
+        maxSize: 36,
         header: ({ table }) => (
           <Checkbox
             checked={
@@ -316,21 +323,22 @@ function OrcamentoPage() {
           />
         ),
       },
-      textColumn("projeto", "Projeto", saveCell),
-      textColumn("descricao", "Descrição", saveCell),
-      textColumn("rubrica", "Rubrica", saveCell),
+      { ...textColumn("projeto", "Projeto", saveCell), size: 200 },
+      { ...textColumn("descricao", "Descrição", saveCell), size: 280 },
+      { ...textColumn("rubrica", "Rubrica", saveCell), size: 180 },
       {
         accessorKey: "tipo",
         header: sortHeader("Tipo"),
         filterFn: textFilterFn,
         meta: { filterType: "text" as const },
+        size: 110,
         cell: ({ row }) => (
           <TipoCell row={row.original} save={saveCell} />
         ),
       },
-      numColumn("ano", "Ano", saveCell, 0),
-      numColumn("mes", "Mês", saveCell, 0),
-      numColumn("valor", "Valor", saveCell, 2),
+      { ...numColumn("ano", "Ano", saveCell, 0), size: 90 },
+      { ...numColumn("mes", "Mês", saveCell, 0), size: 90 },
+      { ...numColumn("valor", "Valor", saveCell, 2), size: 130 },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -346,6 +354,7 @@ function OrcamentoPage() {
       columnOrder,
       rowSelection,
       globalFilter,
+      columnSizing,
     },
     getRowId: (r) => r.id,
     onSortingChange: setSorting,
@@ -354,7 +363,11 @@ function OrcamentoPage() {
     onColumnOrderChange: setColumnOrder,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+    onColumnSizingChange: setColumnSizing,
     enableRowSelection: true,
+    enableColumnResizing: true,
+    columnResizeMode: "onChange",
+    defaultColumn: { minSize: 60, size: 160, maxSize: 800 },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -363,6 +376,19 @@ function OrcamentoPage() {
 
   const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
   const visibleRows = table.getRowModel().rows;
+
+  const reorderColumn = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const order = table.getState().columnOrder.length
+      ? [...table.getState().columnOrder]
+      : table.getAllLeafColumns().map((c) => c.id);
+    const from = order.indexOf(sourceId);
+    const to = order.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    order.splice(from, 1);
+    order.splice(to, 0, sourceId);
+    setColumnOrder(order);
+  };
 
   return (
     <div className="space-y-4 p-6">
@@ -530,20 +556,93 @@ function OrcamentoPage() {
       {/* Data Grid */}
       <div className="rounded-md border">
         <div className="max-h-[72vh] overflow-auto">
-          <Table className="text-sm">
+          <Table
+            className="text-sm"
+            style={{
+              width: table.getTotalSize(),
+              tableLayout: "fixed",
+            }}
+          >
             <TableHeader className="sticky top-0 z-10 bg-muted/50 backdrop-blur">
               {table.getHeaderGroups().map((hg) => (
                 <TableRow key={hg.id} className="hover:bg-transparent">
-                  {hg.headers.map((h) => (
-                    <TableHead
-                      key={h.id}
-                      className="h-8 whitespace-nowrap px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                    >
-                      {h.isPlaceholder
-                        ? null
-                        : flexRender(h.column.columnDef.header, h.getContext())}
-                    </TableHead>
-                  ))}
+                  {hg.headers.map((h) => {
+                    const canDrag = h.column.id !== "select";
+                    const isDragOver = dragOverCol === h.column.id;
+                    return (
+                      <TableHead
+                        key={h.id}
+                        style={{ width: h.getSize() }}
+                        draggable={canDrag}
+                        onDragStart={
+                          canDrag
+                            ? (e) => {
+                                dragColRef.current = h.column.id;
+                                e.dataTransfer.effectAllowed = "move";
+                              }
+                            : undefined
+                        }
+                        onDragOver={
+                          canDrag
+                            ? (e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = "move";
+                                if (dragOverCol !== h.column.id)
+                                  setDragOverCol(h.column.id);
+                              }
+                            : undefined
+                        }
+                        onDragLeave={
+                          canDrag
+                            ? () => {
+                                if (dragOverCol === h.column.id)
+                                  setDragOverCol(null);
+                              }
+                            : undefined
+                        }
+                        onDrop={
+                          canDrag
+                            ? (e) => {
+                                e.preventDefault();
+                                const src = dragColRef.current;
+                                dragColRef.current = null;
+                                setDragOverCol(null);
+                                if (src) reorderColumn(src, h.column.id);
+                              }
+                            : undefined
+                        }
+                        onDragEnd={() => {
+                          dragColRef.current = null;
+                          setDragOverCol(null);
+                        }}
+                        className={cn(
+                          "group relative h-8 select-none whitespace-nowrap px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+                          canDrag && "cursor-grab active:cursor-grabbing",
+                          isDragOver && "bg-primary/10",
+                        )}
+                      >
+                        {h.isPlaceholder
+                          ? null
+                          : flexRender(
+                              h.column.columnDef.header,
+                              h.getContext(),
+                            )}
+                        {h.column.getCanResize() && (
+                          <div
+                            onMouseDown={h.getResizeHandler()}
+                            onTouchStart={h.getResizeHandler()}
+                            onDragStart={(e) => e.preventDefault()}
+                            onClick={(e) => e.stopPropagation()}
+                            draggable={false}
+                            className={cn(
+                              "absolute right-0 top-0 z-20 h-full w-1.5 cursor-col-resize touch-none select-none bg-transparent hover:bg-primary/60",
+                              h.column.getIsResizing() && "bg-primary",
+                            )}
+                          />
+                        )}
+                      </TableHead>
+                    );
+                  })}
                 </TableRow>
               ))}
               {/* Filter sub-header */}
@@ -551,6 +650,7 @@ function OrcamentoPage() {
                 {table.getHeaderGroups()[0]?.headers.map((h) => (
                   <TableHead
                     key={`f-${h.id}`}
+                    style={{ width: h.getSize() }}
                     className="h-8 whitespace-nowrap px-2 py-1"
                   >
                     {h.column.getCanFilter() ? (
@@ -589,7 +689,8 @@ function OrcamentoPage() {
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className="h-8 whitespace-nowrap px-2 py-1 align-middle"
+                        style={{ width: cell.column.getSize() }}
+                        className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle"
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
