@@ -250,6 +250,18 @@ function Dashboard() {
       .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
   }, [data]);
 
+  const rubricas = useMemo(() => {
+    if (!data || !(data as any).rubricas) return [] as RubRow[];
+    return ((data as any).rubricas as Array<{ rubrica: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number }>)
+      .map((r) => {
+        const desvio = r.tipo === "RECEITA" ? r.realizado - r.orcado : r.orcado - r.realizado;
+        const exec = r.orcado === 0 ? 0 : r.realizado / r.orcado;
+        return { ...r, desvio, exec };
+      })
+      .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
+  }, [data]);
+
+
   const anosLista = anos.length ? anos : [ano];
   const anosAlvo: number[] = (data?.intervalo as any)?.anosAlvo ?? [ano];
 
