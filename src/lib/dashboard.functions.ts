@@ -3,6 +3,43 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type ProjRpc = { projeto: string; nome_projeto?: string; receita: number; despesa: number };
+type RubRpc = { rubrica: string; receita: number; despesa: number };
+
+async function rubricaRange(
+  supabase: any,
+  ano: number,
+  mesIni: number,
+  mesFim: number,
+): Promise<Map<string, { rubrica: string; receita: number; despesa: number }>> {
+  const { data: ate, error: e1 } = await supabase.rpc("resumo_transacoes_rubrica", {
+    p_ano: ano,
+    p_mes: mesFim,
+  });
+  if (e1) throw new Error(e1.message);
+  let antes: RubRpc[] = [];
+  if (mesIni > 1) {
+    const { data, error } = await supabase.rpc("resumo_transacoes_rubrica", {
+      p_ano: ano,
+      p_mes: mesIni - 1,
+    });
+    if (error) throw new Error(error.message);
+    antes = (data ?? []) as RubRpc[];
+  }
+  const antesMap = new Map<string, RubRpc>();
+  for (const r of antes) antesMap.set(String(r.rubrica), r);
+
+  const map = new Map<string, { rubrica: string; receita: number; despesa: number }>();
+  for (const r of (ate ?? []) as RubRpc[]) {
+    const key = String(r.rubrica);
+    const prev = antesMap.get(key);
+    map.set(key, {
+      rubrica: key,
+      receita: Number(r.receita ?? 0) - Number(prev?.receita ?? 0),
+      despesa: Number(r.despesa ?? 0) - Number(prev?.despesa ?? 0),
+    });
+  }
+  return map;
+}
 
 async function projetoRange(
   supabase: any,
