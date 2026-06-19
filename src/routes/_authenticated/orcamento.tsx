@@ -542,16 +542,35 @@ function OrcamentoPage() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <div className="flex items-center gap-2">
-          {versoes.length > 0 && (
+          {anosDisponiveis.length > 0 && (
+            <Select
+              value={anoSel != null ? String(anoSel) : undefined}
+              onValueChange={(v) => setAnoSel(Number(v))}
+            >
+              <SelectTrigger className="h-8 w-[110px]">
+                <SelectValue placeholder="Ano" />
+              </SelectTrigger>
+              <SelectContent>
+                {anosDisponiveis.map((a) => (
+                  <SelectItem key={a} value={String(a)}>
+                    {a}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {versoesDoAno.length > 0 && anoSel != null && (
             <Select
               value={versaoVisivel ?? undefined}
-              onValueChange={(v) => setVersaoSel(v)}
+              onValueChange={(v) =>
+                setVersaoSelPorAno((prev) => ({ ...prev, [anoSel]: v }))
+              }
             >
               <SelectTrigger className="h-8 w-[200px]">
                 <SelectValue placeholder="Versão" />
               </SelectTrigger>
               <SelectContent>
-                {versoes.map((v) => (
+                {versoesDoAno.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
                     {v.nome}
                     {v.ativa ? " (ativa)" : ""}
@@ -562,14 +581,16 @@ function OrcamentoPage() {
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={versoes.length === 0}>
+              <Button variant="outline" size="sm" disabled={versoesDoAno.length === 0}>
                 Versões
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-72">
-              <DropdownMenuLabel>Versão usada no dashboard</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                Versão ativa do ano {anoSel ?? ""}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {versoes.map((v) => (
+              {versoesDoAno.map((v) => (
                 <div
                   key={v.id}
                   className="flex items-center gap-2 px-2 py-1.5 text-sm"
