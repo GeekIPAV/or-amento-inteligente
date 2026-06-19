@@ -36,12 +36,12 @@ type ProjRow = {
 
 type RubRow = {
   rubrica: string;
-  tipo: "RECEITA" | "DESPESA";
   orcado: number;
   realizado: number;
   desvio: number;
   exec: number;
 };
+
 
 
 function ResumoProjetosGrid({
