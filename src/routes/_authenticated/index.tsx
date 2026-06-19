@@ -466,6 +466,9 @@ function Dashboard() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <DashboardPeek scope={peek} open={!!peek} onOpenChange={(v) => { if (!v) setPeek(null); }} />
     </div>
   );
+
 }
