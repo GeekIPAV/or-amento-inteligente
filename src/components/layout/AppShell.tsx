@@ -23,6 +23,14 @@ const nav = [
 export function AppShell() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const verificarAdminFn = useServerFn(verificarAdmin);
+  const { data: adminInfo } = useQuery({
+    queryKey: ["is-admin"],
+    queryFn: () => verificarAdminFn(),
+    staleTime: 5 * 60_000,
+  });
+  const isAdmin = !!adminInfo?.isAdmin;
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
