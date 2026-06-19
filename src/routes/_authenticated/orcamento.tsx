@@ -378,6 +378,19 @@ function OrcamentoPage() {
   const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
   const visibleRows = table.getRowModel().rows;
 
+  const reorderColumn = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const order = table.getState().columnOrder.length
+      ? [...table.getState().columnOrder]
+      : table.getAllLeafColumns().map((c) => c.id);
+    const from = order.indexOf(sourceId);
+    const to = order.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    order.splice(from, 1);
+    order.splice(to, 0, sourceId);
+    setColumnOrder(order);
+  };
+
   return (
     <div className="space-y-4 p-6">
       {/* Header */}
