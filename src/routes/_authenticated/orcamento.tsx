@@ -7,12 +7,16 @@ import {
   ColumnFiltersState,
   ColumnOrderState,
   ColumnSizingState,
+  ExpandedState,
   FilterFn,
+  GroupingState,
   SortingState,
   VisibilityState,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
+  getGroupedRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -63,9 +67,12 @@ import {
   ArrowUp,
   ArrowUpDown,
   Check,
+  ChevronDown,
+  ChevronRight,
   Eye,
   Filter,
   GripVertical,
+  Layers,
   Plus,
   Trash2,
   Upload,
@@ -294,6 +301,8 @@ function OrcamentoPage() {
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+  const [grouping, setGrouping] = useState<GroupingState>([]);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
   const dragColRef = useRef<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
@@ -342,9 +351,22 @@ function OrcamentoPage() {
           <TipoCell row={row.original} save={saveCell} />
         ),
       },
-      { ...numColumn("ano", "Ano", saveCell, 0), size: 90 },
-      { ...numColumn("mes", "Mês", saveCell, 0), size: 90 },
-      { ...numColumn("valor", "Valor", saveCell, 2), size: 130 },
+      { ...numColumn("ano", "Ano", saveCell, 0), size: 90, enableGrouping: true },
+      { ...numColumn("mes", "Mês", saveCell, 0), size: 90, enableGrouping: true },
+      {
+        ...numColumn("valor", "Valor", saveCell, 2),
+        size: 130,
+        enableGrouping: false,
+        aggregationFn: "sum",
+        aggregatedCell: ({ getValue }) => (
+          <div className="px-1 py-0.5 text-right text-sm font-semibold tabular-nums">
+            {new Intl.NumberFormat("pt-PT", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(Number(getValue() ?? 0))}
+          </div>
+        ),
+      },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -361,6 +383,8 @@ function OrcamentoPage() {
       rowSelection,
       globalFilter,
       columnSizing,
+      grouping,
+      expanded,
     },
     getRowId: (r) => r.id,
     onSortingChange: setSorting,
@@ -370,6 +394,8 @@ function OrcamentoPage() {
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
     onColumnSizingChange: setColumnSizing,
+    onGroupingChange: setGrouping,
+    onExpandedChange: setExpanded,
     enableRowSelection: true,
     enableColumnResizing: true,
     columnResizeMode: "onEnd",
@@ -377,8 +403,36 @@ function OrcamentoPage() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getGroupedRowModel: getGroupedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    autoResetExpanded: false,
     globalFilterFn: "includesString",
   });
+
+  const filteredFlatRows = table.getFilteredRowModel().flatRows;
+  const summary = useMemo(() => {
+    let receitas = 0;
+    let despesas = 0;
+    for (const r of filteredFlatRows) {
+      const l = r.original as Linha;
+      if (l.tipo === "RECEITA") receitas += Number(l.valor) || 0;
+      else despesas += Number(l.valor) || 0;
+    }
+    return { receitas, despesas, saldo: receitas - despesas };
+  }, [filteredFlatRows]);
+  const fmtEur = (n: number) =>
+    new Intl.NumberFormat("pt-PT", {
+      style: "currency",
+      currency: "EUR",
+    }).format(n);
+
+  const GROUPABLE: { id: string; label: string }[] = [
+    { id: "projeto", label: "Projeto" },
+    { id: "rubrica", label: "Rubrica" },
+    { id: "tipo", label: "Tipo" },
+    { id: "ano", label: "Ano" },
+    { id: "mes", label: "Mês" },
+  ];
 
   const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
   const visibleRows = table.getRowModel().rows;
@@ -399,20 +453,31 @@ function OrcamentoPage() {
   return (
     <div className="space-y-4 p-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Orçamento</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {linhas.length} linhas
-          {versaoVisivelObj && (
-            <>
-              {" · "}
-              {versaoSel && versaoSel !== versaoAtiva?.id ? "A ver" : "Ativa"}:{" "}
-              <span className="font-medium text-foreground">
-                {versaoVisivelObj.nome}
-              </span>
-            </>
-          )}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Orçamento</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {linhas.length} linhas
+            {versaoVisivelObj && (
+              <>
+                {" · "}
+                {versaoSel && versaoSel !== versaoAtiva?.id ? "A ver" : "Ativa"}:{" "}
+                <span className="font-medium text-foreground">
+                  {versaoVisivelObj.nome}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <SummaryCard label="Receitas" value={fmtEur(summary.receitas)} tone="receita" />
+          <SummaryCard label="Despesas" value={fmtEur(summary.despesas)} tone="despesa" />
+          <SummaryCard
+            label="Saldo"
+            value={fmtEur(summary.saldo)}
+            tone={summary.saldo >= 0 ? "receita" : "despesa"}
+          />
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -504,6 +569,47 @@ function OrcamentoPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Layers className="mr-2 h-4 w-4" />
+                Agrupar
+                {grouping.length > 0 && (
+                  <span className="ml-1 rounded bg-primary/10 px-1.5 text-xs text-primary">
+                    {grouping.length}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Agrupar por</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {GROUPABLE.map((g) => (
+                <DropdownMenuCheckboxItem
+                  key={g.id}
+                  checked={grouping.includes(g.id)}
+                  onCheckedChange={(v) => {
+                    setGrouping((prev) =>
+                      v ? [...prev.filter((x) => x !== g.id), g.id] : prev.filter((x) => x !== g.id),
+                    );
+                  }}
+                >
+                  {g.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              {grouping.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <button
+                    className="w-full px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted"
+                    onClick={() => setGrouping([])}
+                  >
+                    Limpar agrupamento
+                  </button>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -711,17 +817,52 @@ function OrcamentoPage() {
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="h-8 border-b border-border/50"
+                    className={cn(
+                      "h-8 border-b border-border/50",
+                      row.getIsGrouped() && "bg-muted/40 font-medium",
+                    )}
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        style={{ width: cell.column.getSize() }}
-                        className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle"
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
+                    {row.getVisibleCells().map((cell) => {
+                      const isGrouped = cell.getIsGrouped();
+                      const isAggregated = cell.getIsAggregated();
+                      const isPlaceholder = cell.getIsPlaceholder();
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          style={{ width: cell.column.getSize() }}
+                          className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle"
+                        >
+                          {isGrouped ? (
+                            <button
+                              type="button"
+                              onClick={row.getToggleExpandedHandler()}
+                              className="flex items-center gap-1 text-left hover:text-primary"
+                              style={{ paddingLeft: `${row.depth * 12}px` }}
+                            >
+                              {row.getIsExpanded() ? (
+                                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                              )}
+                              <span className="truncate">
+                                {String(cell.getValue() ?? "—")}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ({row.subRows.length})
+                              </span>
+                            </button>
+                          ) : isAggregated ? (
+                            flexRender(
+                              cell.column.columnDef.aggregatedCell ??
+                                cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )
+                          ) : isPlaceholder ? null : (
+                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                          )}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))
               )}
@@ -734,6 +875,36 @@ function OrcamentoPage() {
 }
 
 /* -------------------------------------------------------------------------- */
+
+function SummaryCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "receita" | "despesa";
+}) {
+  return (
+    <div className="min-w-[140px] rounded-md border bg-card px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "mt-0.5 text-lg font-semibold tabular-nums",
+          tone === "receita"
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-rose-600 dark:text-rose-400",
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+
 /* Headers                                                                    */
 /* -------------------------------------------------------------------------- */
 
