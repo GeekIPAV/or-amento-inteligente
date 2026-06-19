@@ -250,6 +250,9 @@ function ContasPicker({
   const [q, setQ] = useState("");
 
   const filtered = contas.filter((c) => {
+    const owner = contaToRubrica.get(c.conta);
+    // hide contas already assigned to another rubrica
+    if (owner && owner !== currentRubrica) return false;
     if (!q) return true;
     const s = q.toLowerCase();
     return (
@@ -257,6 +260,7 @@ function ContasPicker({
       (c.descricao_conta ?? "").toLowerCase().includes(s)
     );
   });
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
