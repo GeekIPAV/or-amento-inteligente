@@ -1,17 +1,22 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban, MessageSquare } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban, MessageSquare, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { verificarAdmin } from "@/lib/admin-users.functions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/orcamento", label: "Orçamento", icon: FileSpreadsheet },
-  { to: "/movimentos", label: "Movimentos", icon: TableIcon },
-  { to: "/centros-custo", label: "Centros de Custo", icon: FolderKanban },
-  { to: "/importar-extratos", label: "Importar Extratos", icon: Upload },
-  { to: "/chat", label: "Assistente", icon: MessageSquare },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
+  { to: "/orcamento", label: "Orçamento", icon: FileSpreadsheet, adminOnly: false },
+  { to: "/movimentos", label: "Movimentos", icon: TableIcon, adminOnly: false },
+  { to: "/centros-custo", label: "Centros de Custo", icon: FolderKanban, adminOnly: false },
+  { to: "/importar-extratos", label: "Importar Extratos", icon: Upload, adminOnly: false },
+  { to: "/chat", label: "Assistente", icon: MessageSquare, adminOnly: false },
+  { to: "/admin", label: "Utilizadores", icon: Users, adminOnly: true },
 ] as const;
+
 
 
 
