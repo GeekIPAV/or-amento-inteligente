@@ -184,20 +184,31 @@ function MovimentosPage() {
         </div>
       </div>
 
-      <DataGrid<Mov>
-        data={data}
-        columns={columns}
-        getRowId={(r) => r.id}
-        isLoading={isLoading}
-        searchPlaceholder="Pesquisar em todas as colunas…"
-        groupable={[
-          { id: "mes_referencia", label: "Mês Ref." },
-          { id: "conta", label: "Conta" },
-          { id: "centro_custo", label: "Centro de Custo" },
-          { id: "diario", label: "Diário" },
-        ]}
-        emptyMessage="Sem movimentos."
-      />
+      <Tabs defaultValue="movimentos">
+        <TabsList>
+          <TabsTrigger value="movimentos">Movimentos</TabsTrigger>
+          <TabsTrigger value="importar">Importar</TabsTrigger>
+        </TabsList>
+        <TabsContent value="movimentos">
+          <DataGrid<Mov>
+            data={data}
+            columns={columns}
+            getRowId={(r) => r.id}
+            isLoading={isLoading}
+            searchPlaceholder="Pesquisar em todas as colunas…"
+            groupable={[
+              { id: "mes_referencia", label: "Mês Ref." },
+              { id: "conta", label: "Conta" },
+              { id: "centro_custo", label: "Centro de Custo" },
+              { id: "diario", label: "Diário" },
+            ]}
+            emptyMessage="Sem movimentos."
+          />
+        </TabsContent>
+        <TabsContent value="importar">
+          <ImportarExtratosTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
