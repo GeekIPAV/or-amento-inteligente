@@ -102,6 +102,7 @@ export type Database = {
       }
       orcamento_versoes: {
         Row: {
+          ano: number
           ativa: boolean
           created_at: string
           created_by: string | null
@@ -110,6 +111,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ano: number
           ativa?: boolean
           created_at?: string
           created_by?: string | null
@@ -118,6 +120,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ano?: number
           ativa?: boolean
           created_at?: string
           created_by?: string | null
