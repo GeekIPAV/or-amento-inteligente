@@ -122,7 +122,8 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       const tipo = o.tipo as "RECEITA" | "DESPESA";
       const m = Number(o.mes);
       const v = Number(o.valor ?? 0);
-      if (Number(o.ano) === ano && m >= 1 && m <= 12) {
+      // Gráfico mensal: soma de todos os anos alvo (quando cumulativo) ou só do ano selecionado
+      if (m >= 1 && m <= 12) {
         orcMensal[tipo][m - 1] += v;
       }
       if (m < mesIni || m > mesFim) continue;
@@ -134,14 +135,14 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       else porProjeto.set(key, { projeto: o.projeto, tipo, orcado: v });
     }
 
-    // Realizados — mensal (gráfico): apenas ano selecionado
+    // Realizados — mensal (gráfico): soma em todos os anos alvo
     const realMensal = {
       RECEITA: Array(12).fill(0) as number[],
       DESPESA: Array(12).fill(0) as number[],
     };
-    {
+    for (const y of anosAlvo) {
       const { data: txs, error } = await context.supabase.rpc("resumo_transacoes_mensal", {
-        p_ano: ano,
+        p_ano: y,
       });
       if (error) throw new Error(error.message);
       for (const t of txs ?? []) {
@@ -152,6 +153,7 @@ export const resumoDashboard = createServerFn({ method: "GET" })
         }
       }
     }
+
 
     // Realizados — KPIs e projetos (intervalo + multi-ano)
     let receitaReal = 0;
@@ -192,13 +194,16 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       if (n) r.nome = n;
     }
 
-    const grafico = Array.from({ length: 12 }, (_, i) => ({
-      mes: i + 1,
-      receitaOrc: orcMensal.RECEITA[i],
-      receitaReal: realMensal.RECEITA[i],
-      despesaOrc: orcMensal.DESPESA[i],
-      despesaReal: realMensal.DESPESA[i],
-    }));
+    const grafico = Array.from({ length: mesFim - mesIni + 1 }, (_, i) => {
+      const idx = mesIni - 1 + i;
+      return {
+        mes: idx + 1,
+        receitaOrc: orcMensal.RECEITA[idx],
+        receitaReal: realMensal.RECEITA[idx],
+        despesaOrc: orcMensal.DESPESA[idx],
+        despesaReal: realMensal.DESPESA[idx],
+      };
+    });
 
     return {
       kpis: { receitaOrc, receitaReal, despesaOrc, despesaReal },
