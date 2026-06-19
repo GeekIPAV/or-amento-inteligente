@@ -126,13 +126,13 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     const versaoIds = (versoesAtivas ?? []).map((v: any) => v.id as string);
 
     // Orçamentos
-    const orcs: Array<{ projeto: string; tipo: string; mes: number; ano: number; valor: number }> = [];
+    const orcs: Array<{ projeto: string; tipo: string; mes: number; ano: number; valor: number; rubrica: string | null }> = [];
     if (versaoIds.length > 0) {
       const PAGE = 1000;
       for (let from = 0; ; from += PAGE) {
         const { data: chunk, error: errO } = await context.supabase
           .from("orcamentos")
-          .select("projeto, tipo, mes, ano, valor")
+          .select("projeto, tipo, mes, ano, valor, rubrica")
           .in("versao_id", versaoIds)
           .range(from, from + PAGE - 1);
         if (errO) throw new Error(errO.message);
@@ -141,6 +141,7 @@ export const resumoDashboard = createServerFn({ method: "GET" })
         if (chunk.length < PAGE) break;
       }
     }
+
 
     // KPIs orçamentados (filtrados por meses)
     let receitaOrc = 0;
