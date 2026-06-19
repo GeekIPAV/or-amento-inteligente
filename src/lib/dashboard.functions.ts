@@ -2,13 +2,83 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+type ProjRpc = { projeto: string; nome_projeto?: string; receita: number; despesa: number };
+
+async function projetoRange(
+  supabase: any,
+  ano: number,
+  mesIni: number,
+  mesFim: number,
+): Promise<Map<string, { projeto: string; nome: string; receita: number; despesa: number }>> {
+  const { data: ate, error: e1 } = await supabase.rpc("resumo_transacoes_projeto", {
+    p_ano: ano,
+    p_mes: mesFim,
+  });
+  if (e1) throw new Error(e1.message);
+  let antes: ProjRpc[] = [];
+  if (mesIni > 1) {
+    const { data, error } = await supabase.rpc("resumo_transacoes_projeto", {
+      p_ano: ano,
+      p_mes: mesIni - 1,
+    });
+    if (error) throw new Error(error.message);
+    antes = (data ?? []) as ProjRpc[];
+  }
+  const antesMap = new Map<string, ProjRpc>();
+  for (const r of antes) antesMap.set(String(r.projeto), r);
+
+  const map = new Map<string, { projeto: string; nome: string; receita: number; despesa: number }>();
+  for (const r of (ate ?? []) as ProjRpc[]) {
+    const key = String(r.projeto);
+    const prev = antesMap.get(key);
+    const receita = Number(r.receita ?? 0) - Number(prev?.receita ?? 0);
+    const despesa = Number(r.despesa ?? 0) - Number(prev?.despesa ?? 0);
+    map.set(key, {
+      projeto: key,
+      nome: String(r.nome_projeto ?? key),
+      receita,
+      despesa,
+    });
+  }
+  return map;
+}
+
 export const resumoDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { ano: number; mes: number }) =>
-    z.object({ ano: z.number().int(), mes: z.number().int().min(1).max(12) }).parse(d),
+  .inputValidator(
+    (d: {
+      ano: number;
+      mes?: number | null;
+      mesCumulativo?: boolean;
+      anosCumulativo?: boolean;
+    }) =>
+      z
+        .object({
+          ano: z.number().int(),
+          mes: z.number().int().min(1).max(12).nullish(),
+          mesCumulativo: z.boolean().optional().default(true),
+          anosCumulativo: z.boolean().optional().default(false),
+        })
+        .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { ano, mes } = data;
+    const { ano, mes, mesCumulativo, anosCumulativo } = data;
+
+    // Intervalo de meses a considerar para KPIs e tabela de projetos.
+    const mesIni = mes == null ? 1 : mesCumulativo ? 1 : mes;
+    const mesFim = mes == null ? 12 : mes;
+
+    // Lista de anos
+    let anosAlvo: number[] = [ano];
+    if (anosCumulativo) {
+      const { data: rows, error } = await context.supabase.rpc("anos_transacoes_disponiveis");
+      if (error) throw new Error(error.message);
+      const todos = new Set<number>([ano]);
+      (rows ?? []).forEach((r: any) => todos.add(Number(r.ano)));
+      const { data: orcAnos } = await context.supabase.from("orcamentos").select("ano");
+      (orcAnos ?? []).forEach((r: any) => todos.add(Number(r.ano)));
+      anosAlvo = Array.from(todos).filter((a) => a <= ano).sort((a, b) => a - b);
+    }
 
     // Versão ativa do orçamento
     const { data: versaoAtiva } = await context.supabase
@@ -18,17 +88,18 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       .maybeSingle();
     const versaoId = versaoAtiva?.id ?? null;
 
-    // Orçamentos do ano (apenas versão ativa) — paginar para ultrapassar 1000
-    const orcs: Array<{ projeto: string; tipo: string; mes: number; valor: number }> = [];
+    // Orçamentos
+    const orcs: Array<{ projeto: string; tipo: string; mes: number; ano: number; valor: number }> = [];
     if (versaoId) {
       const PAGE = 1000;
       for (let from = 0; ; from += PAGE) {
-        const { data: chunk, error: errO } = await context.supabase
+        let q = context.supabase
           .from("orcamentos")
-          .select("projeto, tipo, mes, valor")
-          .eq("ano", ano)
-          .eq("versao_id", versaoId)
-          .range(from, from + PAGE - 1);
+          .select("projeto, tipo, mes, ano, valor")
+          .eq("versao_id", versaoId);
+        if (anosCumulativo) q = q.lte("ano", ano);
+        else q = q.eq("ano", ano);
+        const { data: chunk, error: errO } = await q.range(from, from + PAGE - 1);
         if (errO) throw new Error(errO.message);
         if (!chunk || chunk.length === 0) break;
         orcs.push(...(chunk as typeof orcs));
@@ -36,52 +107,90 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       }
     }
 
-
-
+    // KPIs orçamentados (filtrados por meses)
+    let receitaOrc = 0;
+    let despesaOrc = 0;
+    // Gráfico mensal do ANO selecionado (sempre os 12 meses)
     const orcMensal = {
       RECEITA: Array(12).fill(0) as number[],
       DESPESA: Array(12).fill(0) as number[],
     };
+    // Por projeto (filtrado)
     const porProjeto = new Map<string, { projeto: string; tipo: "RECEITA" | "DESPESA"; orcado: number }>();
 
-    for (const o of orcs ?? []) {
+    for (const o of orcs) {
       const tipo = o.tipo as "RECEITA" | "DESPESA";
       const m = Number(o.mes);
       const v = Number(o.valor ?? 0);
-      if (m >= 1 && m <= 12) orcMensal[tipo][m - 1] += v;
+      if (Number(o.ano) === ano && m >= 1 && m <= 12) {
+        orcMensal[tipo][m - 1] += v;
+      }
+      if (m < mesIni || m > mesFim) continue;
+      if (tipo === "RECEITA") receitaOrc += v;
+      else despesaOrc += v;
       const key = `${o.projeto}|${tipo}`;
       const existing = porProjeto.get(key);
-      const contribuiAcumulado = m <= mes ? v : 0;
-      if (existing) existing.orcado += contribuiAcumulado;
-      else porProjeto.set(key, { projeto: o.projeto, tipo, orcado: contribuiAcumulado });
+      if (existing) existing.orcado += v;
+      else porProjeto.set(key, { projeto: o.projeto, tipo, orcado: v });
     }
 
-
-    // Transações do ano agregadas na base de dados, para não truncar anos com muitos movimentos.
-    const { data: txs, error: errT } = await context.supabase.rpc("resumo_transacoes_mensal", {
-      p_ano: ano,
-    });
-    if (errT) throw new Error(errT.message);
-
+    // Realizados — mensal (gráfico): apenas ano selecionado
     const realMensal = {
       RECEITA: Array(12).fill(0) as number[],
       DESPESA: Array(12).fill(0) as number[],
     };
-    for (const t of txs ?? []) {
-      const m = Number(t.mes);
-      if (m >= 1 && m <= 12) {
-        realMensal.RECEITA[m - 1] += Number(t.receita ?? 0);
-        realMensal.DESPESA[m - 1] += Number(t.despesa ?? 0);
+    {
+      const { data: txs, error } = await context.supabase.rpc("resumo_transacoes_mensal", {
+        p_ano: ano,
+      });
+      if (error) throw new Error(error.message);
+      for (const t of txs ?? []) {
+        const m = Number(t.mes);
+        if (m >= 1 && m <= 12) {
+          realMensal.RECEITA[m - 1] += Number(t.receita ?? 0);
+          realMensal.DESPESA[m - 1] += Number(t.despesa ?? 0);
+        }
       }
     }
 
-    const acumular = (arr: number[]) =>
-      arr.slice(0, mes).reduce((a, b) => a + b, 0);
+    // Realizados — KPIs e projetos (intervalo + multi-ano)
+    let receitaReal = 0;
+    let despesaReal = 0;
+    type ProjRow = { projeto: string; nome: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number };
+    const projMap = new Map<string, ProjRow>();
+    for (const p of porProjeto.values()) {
+      projMap.set(`${p.projeto}|${p.tipo}`, { ...p, nome: p.projeto, realizado: 0 });
+    }
 
-    const receitaOrc = acumular(orcMensal.RECEITA);
-    const receitaReal = acumular(realMensal.RECEITA);
-    const despesaOrc = acumular(orcMensal.DESPESA);
-    const despesaReal = acumular(realMensal.DESPESA);
+    for (const y of anosAlvo) {
+      const m = await projetoRange(context.supabase, y, mesIni, mesFim);
+      for (const r of m.values()) {
+        receitaReal += r.receita;
+        despesaReal += r.despesa;
+        if (r.receita !== 0) {
+          const key = `${r.projeto}|RECEITA`;
+          const e = projMap.get(key);
+          if (e) { e.realizado += r.receita; e.nome = r.nome; }
+          else projMap.set(key, { projeto: r.projeto, nome: r.nome, tipo: "RECEITA", orcado: 0, realizado: r.receita });
+        }
+        if (r.despesa !== 0) {
+          const key = `${r.projeto}|DESPESA`;
+          const e = projMap.get(key);
+          if (e) { e.realizado += r.despesa; e.nome = r.nome; }
+          else projMap.set(key, { projeto: r.projeto, nome: r.nome, tipo: "DESPESA", orcado: 0, realizado: r.despesa });
+        }
+      }
+    }
+
+    // Mapeamento de nomes
+    const { data: mapas } = await context.supabase
+      .from("centro_custo_projetos")
+      .select("centro_custo, nome_projeto");
+    const nomeByCC = new Map<string, string>((mapas ?? []).map((m: any) => [m.centro_custo, m.nome_projeto]));
+    for (const r of projMap.values()) {
+      const n = nomeByCC.get(r.projeto);
+      if (n) r.nome = n;
+    }
 
     const grafico = Array.from({ length: 12 }, (_, i) => ({
       mes: i + 1,
@@ -91,53 +200,11 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       despesaReal: realMensal.DESPESA[i],
     }));
 
-    const { data: txsProj, error: errP } = await context.supabase.rpc("resumo_transacoes_projeto", {
-      p_ano: ano,
-      p_mes: mes,
-    });
-    if (errP) throw new Error(errP.message);
-
-    type ProjRow = { projeto: string; nome: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number };
-    const projMap = new Map<string, ProjRow>();
-    for (const p of porProjeto.values()) {
-      projMap.set(`${p.projeto}|${p.tipo}`, { ...p, nome: p.projeto, realizado: 0 });
-    }
-    for (const t of (txsProj ?? []) as Array<{ projeto: string; nome_projeto?: string; receita: number; despesa: number }>) {
-      const projeto = String(t.projeto ?? "(Sem projeto)");
-      const nome = String(t.nome_projeto ?? projeto);
-      const receita = Number(t.receita ?? 0);
-      const despesa = Number(t.despesa ?? 0);
-      if (receita !== 0) {
-        const key = `${projeto}|RECEITA`;
-        const r = projMap.get(key);
-        if (r) { r.realizado += receita; r.nome = nome; }
-        else projMap.set(key, { projeto, nome, tipo: "RECEITA", orcado: 0, realizado: receita });
-      }
-      if (despesa !== 0) {
-        const key = `${projeto}|DESPESA`;
-        const r = projMap.get(key);
-        if (r) { r.realizado += despesa; r.nome = nome; }
-        else projMap.set(key, { projeto, nome, tipo: "DESPESA", orcado: 0, realizado: despesa });
-      }
-    }
-
-    // Aplicar mapeamento de nomes também a projetos que só têm orçamento
-    const { data: mapas } = await context.supabase
-      .from("centro_custo_projetos")
-      .select("centro_custo, nome_projeto");
-    const nomeByCC = new Map<string, string>((mapas ?? []).map((m) => [m.centro_custo, m.nome_projeto]));
-    for (const r of projMap.values()) {
-      const n = nomeByCC.get(r.projeto);
-      if (n) r.nome = n;
-    }
-
     return {
-      kpis: {
-        receitaOrc, receitaReal,
-        despesaOrc, despesaReal,
-      },
+      kpis: { receitaOrc, receitaReal, despesaOrc, despesaReal },
       grafico,
       projetos: Array.from(projMap.values()),
+      intervalo: { ano, mesIni, mesFim, anosCumulativo, anosAlvo },
     };
   });
 
