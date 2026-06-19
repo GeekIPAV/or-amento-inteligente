@@ -250,8 +250,8 @@ function Dashboard() {
       .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
   }, [data]);
 
-  const rubricas = useMemo(() => {
-    if (!data || !(data as any).rubricas) return [] as RubRow[];
+  const rubricas: RubRow[] = useMemo(() => {
+    if (!data || !(data as any).rubricas) return [];
     return ((data as any).rubricas as Array<{ rubrica: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number }>)
       .map((r) => {
         const desvio = r.tipo === "RECEITA" ? r.realizado - r.orcado : r.orcado - r.realizado;
