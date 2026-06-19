@@ -80,26 +80,24 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       anosAlvo = Array.from(todos).filter((a) => a <= ano).sort((a, b) => a - b);
     }
 
-    // Versão ativa do orçamento
-    const { data: versaoAtiva } = await context.supabase
+    // Versões ativas do orçamento (uma por ano) para os anos alvo
+    const { data: versoesAtivas } = await context.supabase
       .from("orcamento_versoes")
-      .select("id")
+      .select("id, ano")
       .eq("ativa", true)
-      .maybeSingle();
-    const versaoId = versaoAtiva?.id ?? null;
+      .in("ano", anosAlvo);
+    const versaoIds = (versoesAtivas ?? []).map((v: any) => v.id as string);
 
     // Orçamentos
     const orcs: Array<{ projeto: string; tipo: string; mes: number; ano: number; valor: number }> = [];
-    if (versaoId) {
+    if (versaoIds.length > 0) {
       const PAGE = 1000;
       for (let from = 0; ; from += PAGE) {
-        let q = context.supabase
+        const { data: chunk, error: errO } = await context.supabase
           .from("orcamentos")
           .select("projeto, tipo, mes, ano, valor")
-          .eq("versao_id", versaoId);
-        if (anosCumulativo) q = q.lte("ano", ano);
-        else q = q.eq("ano", ano);
-        const { data: chunk, error: errO } = await q.range(from, from + PAGE - 1);
+          .in("versao_id", versaoIds)
+          .range(from, from + PAGE - 1);
         if (errO) throw new Error(errO.message);
         if (!chunk || chunk.length === 0) break;
         orcs.push(...(chunk as typeof orcs));
@@ -263,20 +261,20 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
     const { data: txs, error: errT } = await q;
     if (errT) throw new Error(errT.message);
 
-    // Versão ativa do orçamento
-    const { data: versaoAtiva } = await context.supabase
+    // Versões ativas do orçamento (uma por ano)
+    const { data: versoesAtivas } = await context.supabase
       .from("orcamento_versoes")
-      .select("id")
+      .select("id, ano")
       .eq("ativa", true)
-      .maybeSingle();
-    const versaoId = versaoAtiva?.id ?? null;
+      .in("ano", anos);
+    const versaoIds = (versoesAtivas ?? []).map((v: any) => v.id as string);
 
     let orcRows: any[] = [];
-    if (versaoId) {
+    if (versaoIds.length > 0) {
       let oq = context.supabase
         .from("orcamentos")
         .select("projeto, tipo, mes, ano, valor, descricao")
-        .eq("versao_id", versaoId)
+        .in("versao_id", versaoIds)
         .in("ano", anos)
         .gte("mes", mesIni)
         .lte("mes", mesFim)

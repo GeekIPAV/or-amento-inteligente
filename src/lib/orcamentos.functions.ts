@@ -15,11 +15,15 @@ const linhaSchema = z.object({
   valor: z.number(),
 });
 
-async function getVersaoAtivaId(supabase: any): Promise<string | null> {
+async function getVersaoAtivaIdParaAno(
+  supabase: any,
+  ano: number,
+): Promise<string | null> {
   const { data, error } = await supabase
     .from("orcamento_versoes")
     .select("id")
     .eq("ativa", true)
+    .eq("ano", ano)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data?.id ?? null;
@@ -30,7 +34,8 @@ export const listarVersoesOrcamento = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("orcamento_versoes")
-      .select("id, nome, ativa, created_at")
+      .select("id, nome, ativa, ano, created_at")
+      .order("ano", { ascending: false })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -42,11 +47,20 @@ export const definirVersaoAtiva = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    // Desativa todas, depois ativa a escolhida (índice único impede colisão)
+    // Obter o ano da versão escolhida
+    const { data: alvo, error: eA } = await context.supabase
+      .from("orcamento_versoes")
+      .select("ano")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (eA) throw new Error(eA.message);
+    if (!alvo) throw new Error("Versão não encontrada");
+    // Desativa as ativas do mesmo ano, depois ativa a escolhida
     const { error: e1 } = await context.supabase
       .from("orcamento_versoes")
       .update({ ativa: false })
-      .eq("ativa", true);
+      .eq("ativa", true)
+      .eq("ano", alvo.ano);
     if (e1) throw new Error(e1.message);
     const { error: e2 } = await context.supabase
       .from("orcamento_versoes")
@@ -82,16 +96,31 @@ export const criarVersaoOrcamentoCsv = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
+    // Derivar o ano a partir das linhas (todas têm de ser do mesmo ano)
+    const anos = Array.from(new Set(data.linhas.map((l) => l.ano)));
+    if (anos.length !== 1) {
+      throw new Error(
+        `Todas as linhas têm de ser do mesmo ano. Encontrados: ${anos.join(", ")}`,
+      );
+    }
+    const ano = anos[0]!;
+
     if (data.ativar) {
       const { error: eDes } = await context.supabase
         .from("orcamento_versoes")
         .update({ ativa: false })
-        .eq("ativa", true);
+        .eq("ativa", true)
+        .eq("ano", ano);
       if (eDes) throw new Error(eDes.message);
     }
     const { data: versao, error: eV } = await context.supabase
       .from("orcamento_versoes")
-      .insert({ nome: data.nome, ativa: data.ativar, created_by: context.userId })
+      .insert({
+        nome: data.nome,
+        ativa: data.ativar,
+        ano,
+        created_by: context.userId,
+      })
       .select()
       .single();
     if (eV) throw new Error(eV.message);
@@ -101,7 +130,6 @@ export const criarVersaoOrcamentoCsv = createServerFn({ method: "POST" })
       versao_id: versao.id,
       created_by: context.userId,
     }));
-    // Chunk inserts
     const CHUNK = 500;
     for (let i = 0; i < rows.length; i += CHUNK) {
       const { error } = await context.supabase
@@ -112,7 +140,7 @@ export const criarVersaoOrcamentoCsv = createServerFn({ method: "POST" })
         throw new Error(error.message);
       }
     }
-    return { versao_id: versao.id, total: rows.length };
+    return { versao_id: versao.id, total: rows.length, ano };
   });
 
 export const listarOrcamentos = createServerFn({ method: "GET" })
@@ -121,8 +149,7 @@ export const listarOrcamentos = createServerFn({ method: "GET" })
     z.object({ versaoId: z.string().uuid().nullable().optional() }).optional().parse(d),
   )
   .handler(async ({ data, context }) => {
-    let versaoId = data?.versaoId ?? null;
-    if (!versaoId) versaoId = await getVersaoAtivaId(context.supabase);
+    const versaoId = data?.versaoId ?? null;
     if (!versaoId) return [];
     const all: any[] = [];
     const PAGE = 1000;
@@ -145,15 +172,30 @@ export const listarOrcamentos = createServerFn({ method: "GET" })
 
 export const inserirLinhaOrcamento = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => linhaSchema.omit({ id: true }).parse(d))
+  .inputValidator((d: unknown) =>
+    linhaSchema
+      .omit({ id: true })
+      .extend({ versaoId: z.string().uuid() })
+      .parse(d),
+  )
   .handler(async ({ data, context }) => {
-    const versaoId = await getVersaoAtivaId(context.supabase);
-    if (!versaoId) {
-      throw new Error("Não existe versão de orçamento ativa. Faça upload de um CSV primeiro.");
-    }
+    const { versaoId, ...linha } = data;
+    // Garantir que a linha pertence ao ano da versão
+    const { data: v, error: eV } = await context.supabase
+      .from("orcamento_versoes")
+      .select("ano")
+      .eq("id", versaoId)
+      .maybeSingle();
+    if (eV) throw new Error(eV.message);
+    if (!v) throw new Error("Versão não encontrada");
     const { error, data: row } = await context.supabase
       .from("orcamentos")
-      .insert({ ...data, versao_id: versaoId, created_by: context.userId })
+      .insert({
+        ...linha,
+        ano: v.ano,
+        versao_id: versaoId,
+        created_by: context.userId,
+      })
       .select()
       .single();
     if (error) throw new Error(error.message);

@@ -152,11 +152,35 @@ function OrcamentoPage() {
     id: string;
     nome: string;
     ativa: boolean;
+    ano: number;
     created_at: string;
   }>;
-  const versaoAtiva = versoes.find((v) => v.ativa) ?? null;
-  const [versaoSel, setVersaoSel] = useState<string | null>(null);
-  const versaoVisivel = versaoSel ?? versaoAtiva?.id ?? null;
+
+  // Anos disponíveis (todos os anos que têm pelo menos uma versão)
+  const anosDisponiveis = useMemo(() => {
+    return Array.from(new Set(versoes.map((v) => v.ano))).sort((a, b) => b - a);
+  }, [versoes]);
+
+  const [anoSel, setAnoSel] = useState<number | null>(null);
+  // Garante que anoSel está sincronizado com o que existe
+  useEffect(() => {
+    if (anosDisponiveis.length === 0) {
+      if (anoSel !== null) setAnoSel(null);
+      return;
+    }
+    if (anoSel === null || !anosDisponiveis.includes(anoSel)) {
+      setAnoSel(anosDisponiveis[0]!);
+    }
+  }, [anosDisponiveis, anoSel]);
+
+  const versoesDoAno = useMemo(
+    () => versoes.filter((v) => v.ano === anoSel),
+    [versoes, anoSel],
+  );
+  const versaoAtivaDoAno = versoesDoAno.find((v) => v.ativa) ?? null;
+  const [versaoSelPorAno, setVersaoSelPorAno] = useState<Record<number, string>>({});
+  const versaoSel = anoSel != null ? versaoSelPorAno[anoSel] ?? null : null;
+  const versaoVisivel = versaoSel ?? versaoAtivaDoAno?.id ?? versoesDoAno[0]?.id ?? null;
   const versaoVisivelObj = versoes.find((v) => v.id === versaoVisivel) ?? null;
 
   const { data, isLoading } = useQuery({
@@ -186,7 +210,8 @@ function OrcamentoPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao guardar"),
   });
   const insertMut = useMutation({
-    mutationFn: (vars: Omit<Linha, "id">) => insertFn({ data: vars }),
+    mutationFn: (vars: Omit<Linha, "id"> & { versaoId: string }) =>
+      insertFn({ data: vars }),
     onSuccess: () => {
       invalidarTudo();
       toast.success("Linha adicionada");
@@ -207,7 +232,14 @@ function OrcamentoPage() {
       criarVersaoFn({ data: { nome: vars.nome, ativar: true, linhas: vars.linhas } }),
     onSuccess: (r: any) => {
       invalidarTudo();
-      setVersaoSel(null);
+      if (typeof r?.ano === "number") {
+        setAnoSel(r.ano);
+        setVersaoSelPorAno((prev) => {
+          const next = { ...prev };
+          delete next[r.ano];
+          return next;
+        });
+      }
       toast.success(`Nova versão criada (${r?.total ?? 0} linhas)`);
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro no upload"),
@@ -224,7 +256,7 @@ function OrcamentoPage() {
     mutationFn: (id: string) => apagarVersaoFn({ data: { id } }),
     onSuccess: () => {
       invalidarTudo();
-      setVersaoSel(null);
+      setVersaoSelPorAno({});
       toast.success("Versão apagada");
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar versão"),
@@ -485,10 +517,11 @@ function OrcamentoPage() {
           <h1 className="text-3xl font-bold tracking-tight">Orçamento</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {linhas.length} linhas
+            {anoSel != null && <> · Ano <span className="font-medium text-foreground">{anoSel}</span></>}
             {versaoVisivelObj && (
               <>
                 {" · "}
-                {versaoSel && versaoSel !== versaoAtiva?.id ? "A ver" : "Ativa"}:{" "}
+                {versaoSel && versaoSel !== versaoAtivaDoAno?.id ? "A ver" : "Ativa"}:{" "}
                 <span className="font-medium text-foreground">
                   {versaoVisivelObj.nome}
                 </span>
@@ -510,16 +543,35 @@ function OrcamentoPage() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <div className="flex items-center gap-2">
-          {versoes.length > 0 && (
+          {anosDisponiveis.length > 0 && (
+            <Select
+              value={anoSel != null ? String(anoSel) : undefined}
+              onValueChange={(v) => setAnoSel(Number(v))}
+            >
+              <SelectTrigger className="h-8 w-[110px]">
+                <SelectValue placeholder="Ano" />
+              </SelectTrigger>
+              <SelectContent>
+                {anosDisponiveis.map((a) => (
+                  <SelectItem key={a} value={String(a)}>
+                    {a}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {versoesDoAno.length > 0 && anoSel != null && (
             <Select
               value={versaoVisivel ?? undefined}
-              onValueChange={(v) => setVersaoSel(v)}
+              onValueChange={(v) =>
+                setVersaoSelPorAno((prev) => ({ ...prev, [anoSel]: v }))
+              }
             >
               <SelectTrigger className="h-8 w-[200px]">
                 <SelectValue placeholder="Versão" />
               </SelectTrigger>
               <SelectContent>
-                {versoes.map((v) => (
+                {versoesDoAno.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
                     {v.nome}
                     {v.ativa ? " (ativa)" : ""}
@@ -530,14 +582,16 @@ function OrcamentoPage() {
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={versoes.length === 0}>
+              <Button variant="outline" size="sm" disabled={versoesDoAno.length === 0}>
                 Versões
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-72">
-              <DropdownMenuLabel>Versão usada no dashboard</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                Versão ativa do ano {anoSel ?? ""}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {versoes.map((v) => (
+              {versoesDoAno.map((v) => (
                 <div
                   key={v.id}
                   className="flex items-center gap-2 px-2 py-1.5 text-sm"
@@ -663,17 +717,23 @@ function OrcamentoPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
+            disabled={!versaoVisivel || anoSel == null}
+            onClick={() => {
+              if (!versaoVisivel || anoSel == null) {
+                toast.error("Selecione uma versão primeiro");
+                return;
+              }
               insertMut.mutate({
                 projeto: "Novo projeto",
                 descricao: "",
                 rubrica: "",
                 tipo: "DESPESA",
-                ano: new Date().getFullYear(),
+                ano: anoSel,
                 mes: 1,
                 valor: 0,
-              })
-            }
+                versaoId: versaoVisivel,
+              });
+            }}
           >
             <Plus className="mr-2 h-4 w-4" /> Nova linha
           </Button>
