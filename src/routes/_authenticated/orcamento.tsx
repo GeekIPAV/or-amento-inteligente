@@ -288,6 +288,9 @@ function OrcamentoPage() {
   ]);
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [globalFilter, setGlobalFilter] = useState("");
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+  const dragColRef = useRef<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
   const columns = useMemo<ColumnDef<Linha>[]>(
     () => [
