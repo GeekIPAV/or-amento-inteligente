@@ -516,10 +516,11 @@ function OrcamentoPage() {
           <h1 className="text-3xl font-bold tracking-tight">Orçamento</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {linhas.length} linhas
+            {anoSel != null && <> · Ano <span className="font-medium text-foreground">{anoSel}</span></>}
             {versaoVisivelObj && (
               <>
                 {" · "}
-                {versaoSel && versaoSel !== versaoAtiva?.id ? "A ver" : "Ativa"}:{" "}
+                {versaoSel && versaoSel !== versaoAtivaDoAno?.id ? "A ver" : "Ativa"}:{" "}
                 <span className="font-medium text-foreground">
                   {versaoVisivelObj.nome}
                 </span>
