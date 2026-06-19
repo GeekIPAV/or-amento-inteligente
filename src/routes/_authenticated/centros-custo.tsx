@@ -208,6 +208,12 @@ function CentrosCustoPage() {
             value={String(ccList.length - comNome)}
             tone="despesa"
           />
+          <SummaryCard
+            label="Projetos por atribuir"
+            value={String(projetosPorAtribuir)}
+            tone={projetosPorAtribuir > 0 ? "despesa" : "receita"}
+          />
+
         </div>
       </div>
 
