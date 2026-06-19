@@ -314,6 +314,7 @@ export interface DataGridProps<T> {
   isLoading?: boolean;
   maxHeight?: string;
   emptyMessage?: string;
+  onRowClick?: (row: T) => void;
 }
 
 export function DataGrid<T>({
@@ -330,7 +331,9 @@ export function DataGrid<T>({
   isLoading = false,
   maxHeight = "72vh",
   emptyMessage = "Sem dados.",
+  onRowClick,
 }: DataGridProps<T>) {
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
