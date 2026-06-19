@@ -362,8 +362,91 @@ function OrcamentoPage() {
           <h1 className="text-2xl font-semibold">Orçamento</h1>
           <p className="text-sm text-muted-foreground">
             {linhas.length} linhas
+            {versaoAtiva && (
+              <> · Ativa: <span className="font-medium">{versaoAtiva.nome}</span></>
+            )}
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {versoes.length > 0 && (
+            <Select
+              value={versaoVisivel ?? undefined}
+              onValueChange={(v) => setVersaoSel(v)}
+            >
+              <SelectTrigger className="h-9 w-[220px]">
+                <SelectValue placeholder="Versão" />
+              </SelectTrigger>
+              <SelectContent>
+                {versoes.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.nome}{v.ativa ? " (ativa)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={versoes.length === 0}>
+                Versões
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuLabel>Versão usada no dashboard</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {versoes.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex items-center gap-2 px-2 py-1.5 text-sm"
+                >
+                  <Checkbox
+                    checked={v.ativa}
+                    onCheckedChange={(c) => {
+                      if (c && !v.ativa) setAtivaMut.mutate(v.id);
+                    }}
+                  />
+                  <span className="flex-1 truncate">{v.nome}</span>
+                  {v.ativa && <Check className="h-3 w-3 text-primary" />}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      if (confirm(`Apagar versão "${v.nome}" e todas as suas linhas?`))
+                        apagarVersaoMut.mutate(v.id);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              {versoes.length === 0 && (
+                <div className="px-2 py-2 text-xs text-muted-foreground">
+                  Sem versões.
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onUploadCsv(f);
+            }}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={uploadMut.isPending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {uploadMut.isPending ? "A importar…" : "Upload CSV"}
+          </Button>
+
         <div className="flex flex-wrap items-center gap-2">
           <Input
             placeholder="Pesquisar…"
