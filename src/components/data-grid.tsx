@@ -23,6 +23,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -711,6 +712,8 @@ export function DataGrid<T>({
                 </>
               )}
             </TableBody>
+            <DataGridFooter table={table} />
+
 
           </Table>
         </div>
