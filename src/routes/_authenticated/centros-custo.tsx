@@ -144,6 +144,17 @@ function CentrosCustoPage() {
     { id: "linhas", dir: "desc" },
   );
 
+  const { widths, startResize, resizingId } = useColumnWidths({
+    cc: 180,
+    linhas: 110,
+    nprojs: 90,
+    projetos: 360,
+    nome: 260,
+    acao: 80,
+  });
+
+
+
 
   const comNome = ccList.filter(
     (c) => (edits[c.centro_custo]?.nome_display ?? "").trim() !== "",
