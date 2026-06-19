@@ -152,11 +152,35 @@ function OrcamentoPage() {
     id: string;
     nome: string;
     ativa: boolean;
+    ano: number;
     created_at: string;
   }>;
-  const versaoAtiva = versoes.find((v) => v.ativa) ?? null;
-  const [versaoSel, setVersaoSel] = useState<string | null>(null);
-  const versaoVisivel = versaoSel ?? versaoAtiva?.id ?? null;
+
+  // Anos disponíveis (todos os anos que têm pelo menos uma versão)
+  const anosDisponiveis = useMemo(() => {
+    return Array.from(new Set(versoes.map((v) => v.ano))).sort((a, b) => b - a);
+  }, [versoes]);
+
+  const [anoSel, setAnoSel] = useState<number | null>(null);
+  // Garante que anoSel está sincronizado com o que existe
+  useEffect(() => {
+    if (anosDisponiveis.length === 0) {
+      if (anoSel !== null) setAnoSel(null);
+      return;
+    }
+    if (anoSel === null || !anosDisponiveis.includes(anoSel)) {
+      setAnoSel(anosDisponiveis[0]!);
+    }
+  }, [anosDisponiveis, anoSel]);
+
+  const versoesDoAno = useMemo(
+    () => versoes.filter((v) => v.ano === anoSel),
+    [versoes, anoSel],
+  );
+  const versaoAtivaDoAno = versoesDoAno.find((v) => v.ativa) ?? null;
+  const [versaoSelPorAno, setVersaoSelPorAno] = useState<Record<number, string>>({});
+  const versaoSel = anoSel != null ? versaoSelPorAno[anoSel] ?? null : null;
+  const versaoVisivel = versaoSel ?? versaoAtivaDoAno?.id ?? versoesDoAno[0]?.id ?? null;
   const versaoVisivelObj = versoes.find((v) => v.id === versaoVisivel) ?? null;
 
   const { data, isLoading } = useQuery({
