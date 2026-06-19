@@ -125,8 +125,28 @@ export function DashboardPeek({
                     })
                   )}
                 </tbody>
+                {!isLoading && (data?.transacoes ?? []).length > 0 && (
+                  <tfoot className="sticky bottom-0 z-10 bg-muted/70 backdrop-blur">
+                    <tr className="border-t-2 font-semibold">
+                      <td colSpan={4} className="px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">
+                        Total <span className="ml-1 normal-case text-muted-foreground/70">({data!.transacoes.length})</span>
+                      </td>
+                      <td className="px-2 py-1 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {currency.format(
+                          data!.transacoes.reduce((a: number, t: any) => a + Number(t.credito ?? 0), 0),
+                        )}
+                      </td>
+                      <td className="px-2 py-1 text-right tabular-nums text-rose-600 dark:text-rose-400">
+                        {currency.format(
+                          data!.transacoes.reduce((a: number, t: any) => a + Number(t.debito ?? 0), 0),
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
+
             {data && data.transacoes.length >= 1000 && (
               <p className="mt-2 text-xs text-muted-foreground">A mostrar as 1000 transações mais recentes do intervalo.</p>
             )}
@@ -167,8 +187,23 @@ export function DashboardPeek({
                     ))
                   )}
                 </tbody>
+                {!isLoading && (data?.orcamento ?? []).length > 0 && (
+                  <tfoot className="sticky bottom-0 z-10 bg-muted/70 backdrop-blur">
+                    <tr className="border-t-2 font-semibold">
+                      <td colSpan={5} className="px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">
+                        Total <span className="ml-1 normal-case text-muted-foreground/70">({data!.orcamento.length})</span>
+                      </td>
+                      <td className="px-2 py-1 text-right tabular-nums">
+                        {currency.format(
+                          data!.orcamento.reduce((a: number, o: any) => a + Number(o.valor ?? 0), 0),
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
+
           </TabsContent>
         </Tabs>
       </DialogContent>

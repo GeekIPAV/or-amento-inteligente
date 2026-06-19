@@ -1,42 +1,51 @@
 ## Objetivo
-Uniformizar as páginas **Centros de Custo** e **Rubricas / Contas** numa tabela com o mesmo estilo, com cabeçalhos clicáveis para ordenar, e mostrar em cada linha o total de movimentos (e nº de contas/projetos) para ajudar a identificar.
-
-## Abordagem
-Não usar `DataGrid` (virtualização com altura fixa não combina com as linhas que têm pickers de badges variáveis). Em vez disso, criar um pequeno helper de cabeçalho ordenável e usar `<Table>` do shadcn nas duas páginas, com o mesmo layout visual.
+Em todas as tabelas do site, adicionar uma linha final fixa que soma os valores das colunas numéricas (montantes monetários e contagens), respeitando os filtros activos.
 
 ## Mudanças
 
-### 1. `src/components/sortable-table.tsx` (novo)
-- Exporta `useSortableColumns<T>(rows, initial)` — hook que devolve `{ sorted, sort, setSort, SortHeader }`.
-- `SortHeader({ id, label, align? })` — `<TableHead>` clicável com ícone (↑ ↓ ↕) e `cursor-pointer`.
-- Suporta sort por string ou número. Click cicla: asc → desc → none.
+### 1. `DataGrid` — totais automáticos
+**`src/components/data-grid.tsx`**
+- Adicionar `<TableFooter>` sticky no fundo do scroller (bg-muted/70 backdrop-blur) com fila "Total".
+- Para cada coluna visível:
+  - Se a coluna tem `aggregationFn === "sum"` → soma sobre `table.getFilteredRowModel().rows` (não inclui linhas de grupo, respeita filtros).
+  - A primeira coluna sem soma mostra o label "Total" + contador `(N linhas)`.
+  - Demais colunas ficam vazias.
+- Render: usa `<CurrencyCell value={total} />` por defeito; suporta meta opcional `meta.totalFormat: "currency" | "number"` (número para contagens).
 
-### 2. `src/routes/_authenticated/centros-custo.tsx`
-Substituir a `<table>` actual por `<Table>` do shadcn com colunas ordenáveis:
-- **Centro de Custo** (código mono) — sort por código
-- **Movimentos** (`linhas`, alinhado à direita) — sort numérico, default desc
-- **Projetos do Orçamento** (`nº`) — sort numérico (`edits[cc].projetos.length`)
-- **Projetos** — badges + `ProjetoPicker` (não ordenável)
-- **Nome do Projeto** — input (não ordenável)
-- **Ação** — botão guardar
-Manter pesquisa, summary cards, botão "Gravar" global e toda a lógica de edição.
+Cobre automaticamente:
+- `movimentos.tsx` (débito, crédito)
+- `index.tsx` ResumoProjetos (orçado, realizado, desvio)
+- `index.tsx` ResumoRubricas (orçado, realizado, desvio)
+- `ImportarExtratosTab.tsx` (débito, crédito)
 
-### 3. `src/routes/_authenticated/contas-rubricas.tsx`
-Substituir a lista de cards por `<Table>` com mesmo estilo:
-- **Rubrica** — sort alfabético
-- **Contas** (nº atribuídas) — sort numérico
-- **Movimentos** (soma de `linhas` das contas atribuídas) — sort numérico, default desc
-- **Contas atribuídas** — badges + `ContasPicker` (não ordenável)
-- **Ação** — vazio (usa botão "Gravar" global; mantém comportamento actual)
+### 2. Tabelas com `sortable-table`
+**`src/components/sortable-table.tsx`** — exporta novo helper `TableTotalsRow({ cols })` que renderiza um `<TableRow>` em `<TableFooter>` com:
+- Label "Total" na primeira coluna.
+- Para cada `col`: se `format === "number" | "currency"` mostra soma; caso contrário célula vazia.
+- Estilo `bg-muted/50 font-medium border-t-2`.
 
-Para obter o `linhas` por conta, trocar `listarContasDisponiveis` por `listarContas` (já existe em `src/lib/contas-rubricas.functions.ts`, devolve `linhas`). `ContasPicker` passa a mostrar `X mov.` ao lado de cada conta para ajudar a identificar.
+**`src/routes/_authenticated/centros-custo.tsx`**
+- Adicionar `<TableFooter>` com somatórios:
+  - Movimentos = Σ `c.linhas` sobre `sorted`
+  - Projetos = Σ `edits[cc].projetos.length` sobre `sorted`
 
-Manter pesquisa, summary cards, botão "Gravar" global, lógica de edição e impedimento de atribuir conta a >1 rubrica.
+**`src/routes/_authenticated/contas-rubricas.tsx`**
+- Footer com:
+  - Contas = Σ `selected.length`
+  - Movimentos = Σ `movimentosByRubrica(r.rubrica)`
 
-### 4. `ContasPicker` (no mesmo ficheiro)
-- Receber contas com `linhas` e mostrar `· X mov.` ao lado da descrição.
+### 3. `DashboardPeek` (`src/components/dashboard-peek.tsx`)
+- Transações: adicionar `<tfoot>` com totais de crédito e débito (somados sobre `data.transacoes`).
+- Orçamento: `<tfoot>` com total de valor.
+
+### 4. Orçamento (`src/routes/_authenticated/orcamento.tsx`)
+- Na tabela editável principal, adicionar `<TableFooter>` (após `<TableBody>`) com:
+  - Label "Total" na primeira coluna.
+  - Soma de `valor` sobre linhas filtradas (`table.getFilteredRowModel().rows`).
+  - Formatação consistente com `CurrencyCell`.
+
+### 5. Excluído
+- `admin.tsx` — tabela só com texto/datas; sem coluna numérica.
 
 ## Resultado
-- Ambas as páginas têm tabelas com o mesmo estilo (header com sort, hover, linhas alinhadas).
-- Cada linha mostra explicitamente o nº de movimentos (e contas/projetos) que toca, ordenável por essa coluna.
-- O resto do fluxo (edição inline, gravar, pickers, summary cards) permanece intacto.
+Todas as tabelas mostram, na última linha (sticky quando a tabela é scrollável), o total dos valores das colunas numéricas. Os totais reflectem os filtros e a pesquisa actualmente activos.
