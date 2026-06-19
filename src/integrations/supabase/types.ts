@@ -342,6 +342,15 @@ export type Database = {
           receita: number
         }[]
       }
+      resumo_transacoes_rubrica: {
+        Args: { p_ano: number; p_mes: number }
+        Returns: {
+          despesa: number
+          linhas: number
+          receita: number
+          rubrica: string
+        }[]
+      }
       rubricas_disponiveis: {
         Args: never
         Returns: {

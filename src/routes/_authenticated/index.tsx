@@ -34,6 +34,16 @@ type ProjRow = {
   exec: number;
 };
 
+type RubRow = {
+  rubrica: string;
+  tipo: "RECEITA" | "DESPESA";
+  orcado: number;
+  realizado: number;
+  desvio: number;
+  exec: number;
+};
+
+
 function ResumoProjetosGrid({
   projetos,
   isLoading,
@@ -158,7 +168,113 @@ function ResumoProjetosGrid({
 }
 
 
+function ResumoRubricasGrid({
+  rubricas,
+  isLoading,
+  ano,
+}: {
+  rubricas: RubRow[];
+  isLoading: boolean;
+  ano: number;
+}) {
+  const columns: ColumnDef<RubRow, any>[] = [
+    {
+      accessorKey: "rubrica",
+      header: sortHeader("Rubrica"),
+      filterFn: textFilterFn,
+      meta: { filterType: "text" },
+      size: 240,
+      cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
+    },
+    {
+      accessorKey: "tipo",
+      header: sortHeader("Tipo"),
+      filterFn: textFilterFn,
+      meta: { filterType: "text" },
+      size: 110,
+      cell: ({ getValue }) => {
+        const t = getValue() as string;
+        return (
+          <span
+            className={cn(
+              "text-xs font-medium",
+              t === "RECEITA"
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-rose-600 dark:text-rose-400",
+            )}
+          >
+            {t === "RECEITA" ? "Receita" : "Despesa"}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "orcado",
+      header: sortHeader("Orçamentado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ row, getValue }) => (
+        <CurrencyCell value={Number(getValue() ?? 0)} tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"} />
+      ),
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+    },
+    {
+      accessorKey: "realizado",
+      header: sortHeader("Realizado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ row, getValue }) => (
+        <CurrencyCell value={Number(getValue() ?? 0)} tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"} />
+      ),
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+    },
+    {
+      accessorKey: "desvio",
+      header: sortHeader("Desvio"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 140,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+    },
+    {
+      accessorKey: "exec",
+      header: sortHeader("Execução"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 110,
+      enableGrouping: false,
+      cell: ({ row, getValue }) =>
+        row.original.orcado === 0 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <div className="text-right tabular-nums">{percent(Number(getValue() ?? 0))}</div>
+        ),
+    },
+  ];
+
+  return (
+    <DataGrid<RubRow>
+      data={rubricas}
+      columns={columns}
+      getRowId={(r) => `${r.rubrica}-${r.tipo}`}
+      isLoading={isLoading}
+      searchPlaceholder="Pesquisar rubricas…"
+      groupable={[{ id: "tipo", label: "Tipo" }]}
+      emptyMessage={`Sem rubricas com correspondência para ${ano}. Atribui contas às rubricas em Rubricas / Contas.`}
+      maxHeight="60vh"
+    />
+  );
+}
+
+
 const searchSchema = z.object({
+
   ano: z.number().int().optional(),
   mes: z.number().int().min(1).max(12).optional(),
   mesCum: z.boolean().optional(),
@@ -249,6 +365,18 @@ function Dashboard() {
       })
       .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
   }, [data]);
+
+  const rubricas: RubRow[] = useMemo(() => {
+    if (!data || !(data as any).rubricas) return [];
+    return ((data as any).rubricas as Array<{ rubrica: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number }>)
+      .map((r) => {
+        const desvio = r.tipo === "RECEITA" ? r.realizado - r.orcado : r.orcado - r.realizado;
+        const exec = r.orcado === 0 ? 0 : r.realizado / r.orcado;
+        return { ...r, desvio, exec };
+      })
+      .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
+  }, [data]);
+
 
   const anosLista = anos.length ? anos : [ano];
   const anosAlvo: number[] = (data?.intervalo as any)?.anosAlvo ?? [ano];
@@ -468,7 +596,71 @@ function Dashboard() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Resumo por Rubrica</CardTitle>
+          <CardDescription>
+            Comparação entre orçamentado e executado, via match conta → rubrica · {descricaoPeriodo}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="tabela">
+            <TabsList>
+              <TabsTrigger value="tabela">Tabela</TabsTrigger>
+              <TabsTrigger value="grafico">Gráfico</TabsTrigger>
+            </TabsList>
+            <TabsContent value="tabela" className="mt-4">
+              <ResumoRubricasGrid rubricas={rubricas} isLoading={isLoading} ano={ano} />
+            </TabsContent>
+            <TabsContent value="grafico" className="mt-4">
+              <Tabs defaultValue="ambos">
+                <TabsList>
+                  <TabsTrigger value="ambos">Ambos</TabsTrigger>
+                  <TabsTrigger value="receita">Receita</TabsTrigger>
+                  <TabsTrigger value="despesa">Despesa</TabsTrigger>
+                </TabsList>
+                {(["ambos", "receita", "despesa"] as const).map((t) => {
+                  const dados = t === "ambos"
+                    ? rubricas.map((r) => ({
+                        rubrica: `${r.rubrica} (${r.tipo === "RECEITA" ? "R" : "D"})`,
+                        Orçamentado: r.orcado,
+                        Realizado: r.realizado,
+                      }))
+                    : rubricas
+                        .filter((r) => r.tipo === (t === "receita" ? "RECEITA" : "DESPESA"))
+                        .map((r) => ({ rubrica: r.rubrica, Orçamentado: r.orcado, Realizado: r.realizado }));
+                  const altura = Math.max(280, dados.length * 36 + 60);
+                  const corReal = t === "despesa" ? "hsl(0 70% 55%)" : "hsl(160 70% 45%)";
+                  return (
+                    <TabsContent key={t} value={t} className="mt-4">
+                      {dados.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-12">Sem dados para apresentar.</p>
+                      ) : (
+                        <div style={{ height: altura }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dados} layout="vertical" margin={{ left: 20, right: 20 }}>
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                              <XAxis type="number" tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v as number)} />
+                              <YAxis type="category" dataKey="rubrica" width={200} />
+                              <Tooltip formatter={(v: number) => currency.format(v)} />
+                              <Legend />
+                              <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" />
+                              <Bar dataKey="Realizado" fill={corReal} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
       <DashboardPeek scope={peek} open={!!peek} onOpenChange={(v) => { if (!v) setPeek(null); }} />
+
     </div>
   );
 
