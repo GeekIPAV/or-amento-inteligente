@@ -430,10 +430,12 @@ function Dashboard() {
                         Orçamentado: p.orcado,
                         Realizado: p.realizado,
                         _tipo: p.tipo,
+                        _projeto: p.projeto,
+                        _nome: p.nome ?? p.projeto,
                       }))
                     : projetos
                         .filter((p) => p.tipo === (t === "receita" ? "RECEITA" : "DESPESA"))
-                        .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado, _tipo: p.tipo }));
+                        .map((p) => ({ projeto: p.nome ?? p.projeto, Orçamentado: p.orcado, Realizado: p.realizado, _tipo: p.tipo, _projeto: p.projeto, _nome: p.nome ?? p.projeto }));
                   const altura = Math.max(280, dados.length * 36 + 60);
                   const corReal = t === "despesa" ? "hsl(0 70% 55%)" : "hsl(160 70% 45%)";
                   return (
@@ -449,8 +451,8 @@ function Dashboard() {
                               <YAxis type="category" dataKey="projeto" width={180} />
                               <Tooltip formatter={(v: number) => currency.format(v)} />
                               <Legend />
-                              <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" />
-                              <Bar dataKey="Realizado" fill={corReal} />
+                              <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, d._tipo)} />
+                              <Bar dataKey="Realizado" fill={corReal} cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, d._tipo)} />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
@@ -458,6 +460,7 @@ function Dashboard() {
                     </TabsContent>
                   );
                 })}
+
               </Tabs>
             </TabsContent>
           </Tabs>
