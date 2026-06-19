@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Plus, Copy, Trash2, Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Check } from "lucide-react";
+import { Plus, Copy, Trash2, Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -99,6 +99,7 @@ function PromptCard({
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [copiado, setCopiado] = useState(false);
+  const [editando, setEditando] = useState(false);
 
   // Initialize editor content once
   useEffect(() => {
@@ -115,8 +116,8 @@ function PromptCard({
   };
 
   const copiar = async () => {
-    const html = editorRef.current?.innerHTML ?? "";
-    const text = editorRef.current?.innerText ?? "";
+    const html = prompt.descricaoHtml;
+    const text = editorRef.current?.innerText ?? prompt.descricaoHtml.replace(/<[^>]*>/g, "");
     try {
       if (navigator.clipboard && "write" in navigator.clipboard && typeof ClipboardItem !== "undefined") {
         await navigator.clipboard.write([
@@ -136,6 +137,13 @@ function PromptCard({
     }
   };
 
+  const guardar = () => {
+    if (editorRef.current) {
+      onChange({ descricaoHtml: editorRef.current.innerHTML });
+    }
+    setEditando(false);
+  };
+
   return (
     <Card>
       <CardHeader className="gap-3">
@@ -146,32 +154,54 @@ function PromptCard({
             placeholder="Título do prompt"
             className="text-base font-medium"
           />
-          <Button variant="outline" size="sm" onClick={copiar} className="gap-2 shrink-0">
-            {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
-            Copiar
-          </Button>
+          {editando ? (
+            <Button variant="outline" size="sm" onClick={guardar} className="gap-2 shrink-0">
+              <Check className="size-4" />
+              Guardar
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setEditando(true)} className="gap-2 shrink-0">
+              <Pencil className="size-4" />
+              Editar
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={onDelete} className="shrink-0 text-muted-foreground hover:text-destructive">
             <Trash2 className="size-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-1 border rounded-md p-1 w-fit">
-          <ToolbarBtn onClick={() => exec("bold")} title="Negrito"><Bold className="size-4" /></ToolbarBtn>
-          <ToolbarBtn onClick={() => exec("italic")} title="Itálico"><Italic className="size-4" /></ToolbarBtn>
-          <ToolbarBtn onClick={() => exec("underline")} title="Sublinhado"><UnderlineIcon className="size-4" /></ToolbarBtn>
-          <div className="w-px h-5 bg-border mx-1" />
-          <ToolbarBtn onClick={() => exec("insertUnorderedList")} title="Lista"><List className="size-4" /></ToolbarBtn>
-          <ToolbarBtn onClick={() => exec("insertOrderedList")} title="Lista numerada"><ListOrdered className="size-4" /></ToolbarBtn>
-        </div>
+        {editando && (
+          <div className="flex items-center gap-1 border rounded-md p-1 w-fit">
+            <ToolbarBtn onClick={() => exec("bold")} title="Negrito"><Bold className="size-4" /></ToolbarBtn>
+            <ToolbarBtn onClick={() => exec("italic")} title="Itálico"><Italic className="size-4" /></ToolbarBtn>
+            <ToolbarBtn onClick={() => exec("underline")} title="Sublinhado"><UnderlineIcon className="size-4" /></ToolbarBtn>
+            <div className="w-px h-5 bg-border mx-1" />
+            <ToolbarBtn onClick={() => exec("insertUnorderedList")} title="Lista"><List className="size-4" /></ToolbarBtn>
+            <ToolbarBtn onClick={() => exec("insertOrderedList")} title="Lista numerada"><ListOrdered className="size-4" /></ToolbarBtn>
+          </div>
+        )}
       </CardHeader>
-      <CardContent>
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={(e) => onChange({ descricaoHtml: (e.target as HTMLDivElement).innerHTML })}
-          className="min-h-32 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-          data-placeholder="Escreve aqui a tua descrição..."
-        />
+      <CardContent className="space-y-3">
+        {editando ? (
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => onChange({ descricaoHtml: (e.target as HTMLDivElement).innerHTML })}
+            className="min-h-32 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+            data-placeholder="Escreve aqui a tua descrição..."
+          />
+        ) : (
+          <div
+            className="min-h-32 rounded-md border border-transparent bg-background px-3 py-2 text-sm prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+            dangerouslySetInnerHTML={{ __html: prompt.descricaoHtml || '<span class="text-muted-foreground italic">Sem descrição</span>' }}
+          />
+        )}
+        <div className="flex justify-end">
+          <Button variant="secondary" size="sm" onClick={copiar} className="gap-2">
+            {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
+            Copiar descrição
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
