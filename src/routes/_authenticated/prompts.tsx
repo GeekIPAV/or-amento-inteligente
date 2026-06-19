@@ -169,6 +169,24 @@ function PromptCard({
           <Button variant="secondary" size="icon" onClick={copiar} className="shrink-0">
             {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
           </Button>
+          {!editando && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setColapsado((c) => !c)}
+              className="shrink-0 gap-1 text-muted-foreground hover:text-foreground"
+            >
+              {colapsado ? (
+                <>
+                  <ChevronDown className="size-4" /> Ver
+                </>
+              ) : (
+                <>
+                  <ChevronUp className="size-4" /> Ocultar
+                </>
+              )}
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={() => { if (confirm("Tens a certeza que queres apagar este prompt?")) onDelete(); }} className="shrink-0 text-muted-foreground hover:text-destructive">
             <Trash2 className="size-4" />
           </Button>
@@ -184,7 +202,7 @@ function PromptCard({
           </div>
         )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent>
         {editando ? (
           <div
             ref={editorRef}
@@ -195,29 +213,12 @@ function PromptCard({
             data-placeholder="Escreve aqui a tua descrição..."
           />
         ) : (
-          <div className="relative">
-            {!colapsado && (
-              <div
-                className="rounded-md border border-transparent bg-background px-3 py-2 text-sm prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-                dangerouslySetInnerHTML={{ __html: prompt.descricaoHtml || '<span class="text-muted-foreground italic">Sem descrição</span>' }}
-              />
-            )}
-            <button
-              type="button"
-              onClick={() => setColapsado((c) => !c)}
-              className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-            >
-              {colapsado ? (
-                <>
-                  <ChevronDown className="size-3" /> Ver mais
-                </>
-              ) : (
-                <>
-                  <ChevronUp className="size-3" /> Ver menos
-                </>
-              )}
-            </button>
-          </div>
+          !colapsado && (
+            <div
+              className="rounded-md border border-transparent bg-background px-3 py-2 text-sm prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+              dangerouslySetInnerHTML={{ __html: prompt.descricaoHtml || '<span class="text-muted-foreground italic">Sem descrição</span>' }}
+            />
+          )
         )}
       </CardContent>
     </Card>
