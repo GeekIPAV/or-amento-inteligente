@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   listUsuarios,
-  criarUsuario,
+  convidarUsuario,
   removerUsuario,
   atualizarRole,
   type AdminUser,
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 function AdminPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listUsuarios);
-  const criarFn = useServerFn(criarUsuario);
+  const criarFn = useServerFn(convidarUsuario);
   const removerFn = useServerFn(removerUsuario);
   const roleFn = useServerFn(atualizarRole);
 
@@ -69,17 +69,20 @@ function AdminPage() {
 
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<AdminUser | null>(null);
-  const [form, setForm] = useState({ email: "", password: "", role: "user" as "user" | "admin" });
+  const [form, setForm] = useState({ email: "", role: "user" as "user" | "admin" });
 
   const criar = useMutation({
-    mutationFn: () => criarFn({ data: form }),
+    mutationFn: () =>
+      criarFn({
+        data: { ...form, redirectTo: `${window.location.origin}/aceitar-convite` },
+      }),
     onSuccess: () => {
-      toast.success("Utilizador criado.");
+      toast.success("Convite enviado por email.");
       setOpen(false);
-      setForm({ email: "", password: "", role: "user" });
+      setForm({ email: "", role: "user" });
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao criar utilizador."),
+    onError: (e: any) => toast.error(e.message ?? "Erro ao enviar convite."),
   });
 
   const remover = useMutation({
@@ -127,8 +130,8 @@ function AdminPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Adicionar utilizador</DialogTitle>
-              <DialogDescription>O utilizador receberá acesso imediato com a palavra-passe que definires.</DialogDescription>
+              <DialogTitle>Convidar utilizador</DialogTitle>
+              <DialogDescription>Será enviado um email com um link para a pessoa definir a sua palavra-passe.</DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
@@ -139,16 +142,6 @@ function AdminPage() {
                   value={form.email}
                   onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
                   placeholder="nome@empresa.pt"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Palavra-passe</Label>
-                <Input
-                  id="password"
-                  type="text"
-                  value={form.password}
-                  onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                  placeholder="Mínimo 8 caracteres"
                 />
               </div>
               <div className="space-y-1.5">
@@ -166,9 +159,9 @@ function AdminPage() {
               <Button variant="outline" onClick={() => setOpen(false)} disabled={criar.isPending}>Cancelar</Button>
               <Button
                 onClick={() => criar.mutate()}
-                disabled={criar.isPending || !form.email || form.password.length < 8}
+                disabled={criar.isPending || !form.email}
               >
-                {criar.isPending ? "A criar…" : "Criar"}
+                {criar.isPending ? "A enviar…" : "Enviar convite"}
               </Button>
             </DialogFooter>
           </DialogContent>
