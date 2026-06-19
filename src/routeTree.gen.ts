@@ -18,7 +18,6 @@ import { Route as AuthenticatedMovimentosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedImportarExtratosRouteImport } from './routes/_authenticated/importar-extratos'
 import { Route as AuthenticatedCentrosCustoRouteImport } from './routes/_authenticated/centros-custo'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as AuthenticatedChatThreadIdRouteImport } from './routes/_authenticated/chat.$threadId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -66,12 +65,6 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedChatThreadIdRoute =
-  AuthenticatedChatThreadIdRouteImport.update({
-    id: '/chat/$threadId',
-    path: '/chat/$threadId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -82,7 +75,6 @@ export interface FileRoutesByFullPath {
   '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
   '/prompts': typeof AuthenticatedPromptsRoute
-  '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -93,7 +85,6 @@ export interface FileRoutesByTo {
   '/orcamento': typeof AuthenticatedOrcamentoRoute
   '/prompts': typeof AuthenticatedPromptsRoute
   '/': typeof AuthenticatedIndexRoute
-  '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,7 +97,6 @@ export interface FileRoutesById {
   '/_authenticated/orcamento': typeof AuthenticatedOrcamentoRoute
   '/_authenticated/prompts': typeof AuthenticatedPromptsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,7 +109,6 @@ export interface FileRouteTypes {
     | '/movimentos'
     | '/orcamento'
     | '/prompts'
-    | '/chat/$threadId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -130,7 +119,6 @@ export interface FileRouteTypes {
     | '/orcamento'
     | '/prompts'
     | '/'
-    | '/chat/$threadId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -142,7 +130,6 @@ export interface FileRouteTypes {
     | '/_authenticated/orcamento'
     | '/_authenticated/prompts'
     | '/_authenticated/'
-    | '/_authenticated/chat/$threadId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -215,13 +202,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/chat/$threadId': {
-      id: '/_authenticated/chat/$threadId'
-      path: '/chat/$threadId'
-      fullPath: '/chat/$threadId'
-      preLoaderRoute: typeof AuthenticatedChatThreadIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
   }
 }
 
@@ -233,7 +213,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOrcamentoRoute: typeof AuthenticatedOrcamentoRoute
   AuthenticatedPromptsRoute: typeof AuthenticatedPromptsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedChatThreadIdRoute: typeof AuthenticatedChatThreadIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -244,7 +223,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOrcamentoRoute: AuthenticatedOrcamentoRoute,
   AuthenticatedPromptsRoute: AuthenticatedPromptsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedChatThreadIdRoute: AuthenticatedChatThreadIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
