@@ -100,6 +100,30 @@ export type Database = {
         }
         Relationships: []
       }
+      conta_rubricas: {
+        Row: {
+          conta: string
+          created_at: string
+          id: string
+          rubrica: string
+          updated_at: string
+        }
+        Insert: {
+          conta: string
+          created_at?: string
+          id?: string
+          rubrica: string
+          updated_at?: string
+        }
+        Update: {
+          conta?: string
+          created_at?: string
+          id?: string
+          rubrica?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orcamento_versoes: {
         Row: {
           ano: number
@@ -271,6 +295,15 @@ export type Database = {
           nome_projeto: string
         }[]
       }
+      contas_listagem: {
+        Args: never
+        Returns: {
+          conta: string
+          descricao_conta: string
+          linhas: number
+          rubrica: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -295,6 +328,12 @@ export type Database = {
           nome_projeto: string
           projeto: string
           receita: number
+        }[]
+      }
+      rubricas_disponiveis: {
+        Args: never
+        Returns: {
+          rubrica: string
         }[]
       }
     }
