@@ -717,17 +717,23 @@ function OrcamentoPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
+            disabled={!versaoVisivel || anoSel == null}
+            onClick={() => {
+              if (!versaoVisivel || anoSel == null) {
+                toast.error("Selecione uma versão primeiro");
+                return;
+              }
               insertMut.mutate({
                 projeto: "Novo projeto",
                 descricao: "",
                 rubrica: "",
                 tipo: "DESPESA",
-                ano: new Date().getFullYear(),
+                ano: anoSel,
                 mes: 1,
                 valor: 0,
-              })
-            }
+                versaoId: versaoVisivel,
+              });
+            }}
           >
             <Plus className="mr-2 h-4 w-4" /> Nova linha
           </Button>
