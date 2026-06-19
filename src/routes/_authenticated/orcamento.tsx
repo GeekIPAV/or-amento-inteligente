@@ -371,7 +371,7 @@ function OrcamentoPage() {
     onColumnSizingChange: setColumnSizing,
     enableRowSelection: true,
     enableColumnResizing: true,
-    columnResizeMode: "onChange",
+    columnResizeMode: "onEnd",
     defaultColumn: { minSize: 60, size: 160, maxSize: 800 },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
