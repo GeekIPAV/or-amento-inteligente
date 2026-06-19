@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -393,6 +394,22 @@ export function DataGrid<T>({
 
   const rows = table.getRowModel().rows;
 
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const ROW_HEIGHT = 33; // px (h-8 + border)
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollerRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+  });
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const paddingBottom =
+    virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0;
+  const visibleColCount = table.getVisibleLeafColumns().length;
+
+
   return (
     <div className="space-y-3">
       {/* Toolbar */}
@@ -482,7 +499,8 @@ export function DataGrid<T>({
 
       {/* Grid */}
       <div className="rounded-md border">
-        <div className="overflow-auto" style={{ maxHeight }}>
+        <div ref={scrollerRef} className="overflow-auto" style={{ maxHeight, height: maxHeight }}>
+
           <Table
             className="text-sm"
             style={{
@@ -593,80 +611,97 @@ export function DataGrid<T>({
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    A carregar…
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 10 }).map((_, i) => (
+                  <TableRow key={`sk-${i}`} className="h-8 border-b border-border/50">
+                    <TableCell colSpan={visibleColCount} className="h-8 px-2 py-1">
+                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length}
+                    colSpan={visibleColCount}
                     className="h-24 text-center text-muted-foreground"
                   >
                     {emptyMessage}
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((row: Row<T>) => (
-                  <TableRow
-                    key={row.id}
-                    className={cn(
-                      "h-8 border-b border-border/50",
-                      row.getIsGrouped() && "bg-muted/40 font-medium",
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => {
-                      const isGrouped = cell.getIsGrouped();
-                      const isAggregated = cell.getIsAggregated();
-                      const isPlaceholder = cell.getIsPlaceholder();
-                      return (
-                        <TableCell
-                          key={cell.id}
-                          style={{ width: cell.column.getSize() }}
-                          className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle"
-                        >
-                          {isGrouped ? (
-                            <button
-                              type="button"
-                              onClick={row.getToggleExpandedHandler()}
-                              className="flex items-center gap-1 text-left hover:text-primary"
-                              style={{ paddingLeft: `${row.depth * 12}px` }}
+                <>
+                  {paddingTop > 0 && (
+                    <tr aria-hidden style={{ height: paddingTop }}>
+                      <td colSpan={visibleColCount} className="p-0" />
+                    </tr>
+                  )}
+                  {virtualItems.map((vi) => {
+                    const row = rows[vi.index] as Row<T>;
+                    return (
+                      <TableRow
+                        key={row.id}
+                        data-index={vi.index}
+                        className={cn(
+                          "h-8 border-b border-border/50",
+                          row.getIsGrouped() && "bg-muted/40 font-medium",
+                        )}
+                        style={{ height: ROW_HEIGHT }}
+                      >
+                        {row.getVisibleCells().map((cell) => {
+                          const isGrouped = cell.getIsGrouped();
+                          const isAggregated = cell.getIsAggregated();
+                          const isPlaceholder = cell.getIsPlaceholder();
+                          return (
+                            <TableCell
+                              key={cell.id}
+                              style={{ width: cell.column.getSize() }}
+                              className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle"
                             >
-                              {row.getIsExpanded() ? (
-                                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-                              ) : (
-                                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                              {isGrouped ? (
+                                <button
+                                  type="button"
+                                  onClick={row.getToggleExpandedHandler()}
+                                  className="flex items-center gap-1 text-left hover:text-primary"
+                                  style={{ paddingLeft: `${row.depth * 12}px` }}
+                                >
+                                  {row.getIsExpanded() ? (
+                                    <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                                  ) : (
+                                    <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                                  )}
+                                  <span className="truncate">
+                                    {String(cell.getValue() ?? "—")}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({row.subRows.length})
+                                  </span>
+                                </button>
+                              ) : isAggregated ? (
+                                flexRender(
+                                  cell.column.columnDef.aggregatedCell ??
+                                    cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )
+                              ) : isPlaceholder ? null : (
+                                flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )
                               )}
-                              <span className="truncate">
-                                {String(cell.getValue() ?? "—")}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                ({row.subRows.length})
-                              </span>
-                            </button>
-                          ) : isAggregated ? (
-                            flexRender(
-                              cell.column.columnDef.aggregatedCell ??
-                                cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )
-                          ) : isPlaceholder ? null : (
-                            flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    );
+                  })}
+                  {paddingBottom > 0 && (
+                    <tr aria-hidden style={{ height: paddingBottom }}>
+                      <td colSpan={visibleColCount} className="p-0" />
+                    </tr>
+                  )}
+                </>
               )}
             </TableBody>
+
           </Table>
         </div>
       </div>
