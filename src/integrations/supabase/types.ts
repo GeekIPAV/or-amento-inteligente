@@ -287,9 +287,21 @@ export type Database = {
           ano: number
         }[]
       }
+      atribuir_centros_custo_projeto: {
+        Args: { p_centros: string[]; p_projeto: string }
+        Returns: undefined
+      }
       atribuir_contas_rubrica: {
         Args: { p_contas: string[]; p_rubrica: string }
         Returns: undefined
+      }
+      centros_custo_disponiveis: {
+        Args: never
+        Returns: {
+          centro_custo: string
+          linhas: number
+          projeto: string
+        }[]
       }
       centros_custo_listagem: {
         Args: never
@@ -322,6 +334,20 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      projetos_disponiveis: {
+        Args: never
+        Returns: {
+          projeto: string
+        }[]
+      }
+      projetos_listagem: {
+        Args: never
+        Returns: {
+          centros_custo: string[]
+          num_centros: number
+          projeto: string
+        }[]
       }
       resumo_transacoes_mensal: {
         Args: { p_ano: number }
