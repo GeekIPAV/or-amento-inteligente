@@ -20,6 +20,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Save, ChevronsUpDown, X } from "lucide-react";
 import { SummaryCard } from "@/components/data-grid";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { SortHeader, useSortableRows } from "@/components/sortable-table";
+
 
 export const Route = createFileRoute("/_authenticated/centros-custo")({
   component: CentrosCustoPage,
@@ -130,6 +133,18 @@ function CentrosCustoPage() {
     );
   });
 
+  const { sorted, sort, toggle } = useSortableRows(
+    filtered,
+    {
+      cc: (c) => c.centro_custo,
+      linhas: (c) => c.linhas,
+      nprojs: (c) => (edits[c.centro_custo]?.projetos.length ?? 0),
+      nome: (c) => edits[c.centro_custo]?.nome_display ?? "",
+    },
+    { id: "linhas", dir: "desc" },
+  );
+
+
   const comNome = ccList.filter(
     (c) => (edits[c.centro_custo]?.nome_display ?? "").trim() !== "",
   ).length;
@@ -237,72 +252,68 @@ function CentrosCustoPage() {
       </div>
 
       <div className="overflow-hidden rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-xs">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium w-[180px]">
-                Centro de Custo (movimentos)
-              </th>
-              <th className="px-3 py-2 text-left font-medium">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <SortHeader id="cc" sort={sort} onToggle={toggle} width={180}>
+                Centro de Custo
+              </SortHeader>
+              <SortHeader id="linhas" sort={sort} onToggle={toggle} align="right" width={110}>
+                Movimentos
+              </SortHeader>
+              <SortHeader id="nprojs" sort={sort} onToggle={toggle} align="right" width={90}>
+                Projetos
+              </SortHeader>
+              <SortHeader id="projetos" sort={sort} onToggle={toggle} sortable={false}>
                 Projetos do Orçamento
-              </th>
-              <th className="px-3 py-2 text-left font-medium w-[260px]">
+              </SortHeader>
+              <SortHeader id="nome" sort={sort} onToggle={toggle} width={260}>
                 Nome do Projeto
-              </th>
-              <th className="px-3 py-2 w-[80px]"></th>
-            </tr>
-          </thead>
-          <tbody>
+              </SortHeader>
+              <SortHeader id="acao" sort={sort} onToggle={toggle} sortable={false} width={80}>
+                <span className="sr-only">Ação</span>
+              </SortHeader>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isLoading ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-3 py-6 text-center text-muted-foreground"
-                >
+              <TableRow>
+                <TableCell colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
                   A carregar…
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-3 py-6 text-center text-muted-foreground"
-                >
+                </TableCell>
+              </TableRow>
+            ) : sorted.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
                   Sem centros de custo.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
-              filtered.map((c) => {
-                const e = edits[c.centro_custo] ?? {
-                  nome_display: "",
-                  projetos: [],
-                };
+              sorted.map((c) => {
+                const e = edits[c.centro_custo] ?? { nome_display: "", projetos: [] };
                 const dirty = isDirty(c.centro_custo);
                 return (
-                  <tr
+                  <TableRow
                     key={c.centro_custo}
-                    className={`border-t ${dirty ? "bg-primary/5" : ""}`}
+                    className={dirty ? "bg-primary/5" : undefined}
                   >
-                    <td className="px-3 py-2 align-top">
-                      <div className="font-mono text-xs">{c.centro_custo}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {c.linhas} mov.
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 align-top">
+                    <TableCell className="px-3 py-2 align-top font-mono text-xs">
+                      {c.centro_custo}
+                    </TableCell>
+                    <TableCell className="px-3 py-2 align-top text-right tabular-nums">
+                      {c.linhas}
+                    </TableCell>
+                    <TableCell className="px-3 py-2 align-top text-right tabular-nums">
+                      {e.projetos.length}
+                    </TableCell>
+                    <TableCell className="px-3 py-2 align-top">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {e.projetos.map((p) => (
-                          <Badge
-                            key={p}
-                            variant="secondary"
-                            className="gap-1 text-xs"
-                          >
+                          <Badge key={p} variant="secondary" className="gap-1 text-xs">
                             {p}
                             <button
                               type="button"
-                              onClick={() =>
-                                toggleProjeto(c.centro_custo, p)
-                              }
+                              onClick={() => toggleProjeto(c.centro_custo, p)}
                               className="ml-0.5 rounded hover:bg-foreground/10"
                             >
                               <X className="h-3 w-3" />
@@ -316,23 +327,20 @@ function CentrosCustoPage() {
                           currentCC={c.centro_custo}
                           onToggle={(p) => toggleProjeto(c.centro_custo, p)}
                         />
-
                       </div>
-                    </td>
-                    <td className="px-3 py-2 align-top">
+                    </TableCell>
+                    <TableCell className="px-3 py-2 align-top">
                       <Input
                         value={e.nome_display}
-                        onChange={(ev) =>
-                          setNome(c.centro_custo, ev.target.value)
-                        }
+                        onChange={(ev) => setNome(c.centro_custo, ev.target.value)}
                         onKeyDown={(ev) => {
                           if (ev.key === "Enter" && dirty) saveOne(c.centro_custo);
                         }}
                         placeholder="Nome do projeto…"
                         className="h-8 text-sm"
                       />
-                    </td>
-                    <td className="px-3 py-2 align-top text-right">
+                    </TableCell>
+                    <TableCell className="px-3 py-2 align-top text-right">
                       <Button
                         size="sm"
                         variant={dirty ? "default" : "ghost"}
@@ -341,14 +349,15 @@ function CentrosCustoPage() {
                       >
                         <Save className="h-3.5 w-3.5" />
                       </Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
+
     </div>
   );
 }
