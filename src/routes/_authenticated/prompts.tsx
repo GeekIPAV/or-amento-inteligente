@@ -166,6 +166,9 @@ function PromptCard({
               Editar
             </Button>
           )}
+          <Button variant="secondary" size="icon" onClick={copiar} className="shrink-0">
+            {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => { if (confirm("Tens a certeza que queres apagar este prompt?")) onDelete(); }} className="shrink-0 text-muted-foreground hover:text-destructive">
             <Trash2 className="size-4" />
           </Button>
