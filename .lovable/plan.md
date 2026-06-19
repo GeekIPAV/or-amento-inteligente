@@ -1,97 +1,51 @@
+## Problema
 
-# Dashboard de Finanças (PT-PT)
+A página **Orçamento** importa CSV com um parser inline rígido (`onUploadCsv` em `src/routes/_authenticated/orcamento.tsx`) que:
 
-Aplicação interna para controlo orçamental plurianual, importação de extratos contabilísticos e análise de desvios Orçado vs Realizado.
+- Exige cabeçalhos exatos `projeto, tipo, ano, mes, valor`.
+- Rebenta se `tipo` não for `RECEITA`/`DESPESA`.
+- Rejeita linhas com `mes` vazio, `0`, ou `mes` em texto (`jan`, `fev`…).
+- Não reconhece `centro de custos`, `Mês`, `Valor (dos eur)`, `descrição`, `Rubrica`.
 
-## 1. Backend (Lovable Cloud)
+O CSV `Orcamento_Consolidado_2025.csv` usa esses cabeçalhos alternativos e tem linhas onde algumas colunas podem vir vazias.
 
-### Autenticação
-- Email/password (sem Google), sem tabela `profiles` (não precisamos de dados de perfil extra).
-- Página `/auth` para login e registo.
-- Todas as páginas da aplicação ficam sob `_authenticated/` (gate gerido pela integração).
-- Dados partilhados entre todos os utilizadores autenticados (ferramenta de equipa) — RLS permite SELECT/INSERT/UPDATE/DELETE a qualquer utilizador autenticado.
+Já existe `parseOrcamentoCSV` em `src/lib/csv-parser.ts` que normaliza estes cabeçalhos e infere `tipo` pelo sinal — mas também ela descarta linhas com `mes` inválido ou `valor=0`.
 
-### Tabelas
+## Solução
 
-**`orcamentos`** — meta orçamental por projeto/ano com versionamento:
-- `id` (uuid, PK)
-- `projeto` (text)
-- `ano` (int)
-- `versao` (int) — incremental por (projeto, ano)
-- `ativo` (boolean) — apenas uma versão ativa por (projeto, ano, tipo)
-- `tipo` (enum `RECEITA` | `DESPESA`)
-- `m1`..`m12` (numeric, default 0)
-- `created_at`, `created_by` (uuid → auth.users)
-- Índice: (ano, ativo, tipo)
+1. Trocar o parser inline pelo `parseOrcamentoCSV` (com pequenas alterações para ser mais tolerante).
+2. Tornar o parser tolerante a campos vazios:
+   - **Mês vazio / `0` / não reconhecido**: tratar como "ano inteiro" → distribuir o valor pelos 12 meses (uma linha por mês com `valor/12`), ou — mais simples e claro — criar **12 linhas iguais com o mesmo valor** se for um valor mensal recorrente. Vou pedir confirmação ao utilizador antes de assumir (ver pergunta abaixo).
+   - **Ano vazio**: usar o ano atual como fallback e avisar no toast (`X linhas sem ano usaram 2026`).
+   - **Centro de custos vazio**: usar `"(Sem projeto)"`.
+   - **Descrição/Rubrica vazias**: aceitar como `null`.
+   - **Valor vazio ou `0`**: ignorar a linha silenciosamente (não é erro).
+3. Achatar o resultado agregado em linhas individuais `{projeto, descricao, rubrica, tipo, ano, mes, valor}` e enviar para `uploadMut`.
+4. Mostrar um toast resumo: `N linhas importadas, M ignoradas (sem valor), K com mês em falta tratadas como anuais`.
 
-**`transacoes_extrato`** — linhas importadas dos CSVs:
-- `id` (uuid, PK)
-- `conta` (text), `descricao_conta` (text)
-- `data` (date)
-- `num_documento` (text), `diario` (text), `movimento` (text)
-- `centro_custo` (text, nullable)
-- `debito` (numeric, default 0), `credito` (numeric, default 0)
-- `mes_referencia` (text, formato `YYYY-MM`)
-- `importado_em` (timestamptz), `importado_por` (uuid)
-- Índice: (mes_referencia), (data)
+## Detalhes técnicos
 
-RLS: ambas as tabelas permitem tudo a `authenticated`; GRANTs para `authenticated` e `service_role`.
+Em `src/lib/csv-parser.ts` (`parseOrcamentoCSV`):
 
-## 2. Frontend (TanStack Start)
+- Quando `mes` não resolve para 1-12 (vazio, `0`, texto desconhecido) **e** `valor ≠ 0`: marcar a linha como "anual" e replicá-la pelos 12 meses no bucket (em vez de descartar).
+- Ano em falta: usar `new Date().getFullYear()`.
+- Devolver contadores extra: `semMes`, `semValor`, para o toast.
 
-Layout com sidebar de navegação (Dashboard, Orçamento, Importar Extratos) + header com logout.
+Em `src/routes/_authenticated/orcamento.tsx` (`onUploadCsv`):
 
-### `/` — Dashboard Principal
-- Seletores: **Ano** (dropdown) e **Mês de referência** (1–12).
-- Cards KPI:
-  - Receita Orçada (acumulada m1..mês) vs Receita Realizada (soma de `credito` das transações com `mes_referencia` ≤ mês selecionado do ano).
-  - Despesa Orçada vs Despesa Realizada (soma de `debito`).
-  - Desvio Absoluto (Orçado − Realizado) e % Execução (Realizado / Orçado).
-- Gráfico de barras (Recharts) mensal m1..m12: Orçado vs Realizado, separado por Receita e Despesa (tabs ou dois gráficos).
-- Tabela-resumo por projeto com desvios.
-- Usa apenas a versão `ativo = true` de cada orçamento.
+- Ler o ficheiro como texto, chamar `parseOrcamentoCSV`.
+- Validar apenas que existem cabeçalhos para `centro de custos` e `valor` — os restantes têm fallbacks.
+- Achatar `OrcamentoLinhaAgg.meses[]` em linhas `Linha` (uma por mês com valor ≠ 0).
+- Chamar `uploadMut.mutate({ nome, linhas })`.
 
-### `/orcamento` — Gestão de Orçamento
-- Seletores: Ano, Tipo (Receita/Despesa), Versão (dropdown com histórico; default = ativa).
-- Tabela editável: linhas = projetos, colunas = m1..m12 + Total.
-  - Inputs numéricos inline; guardar em batch.
-  - Botão **+ Adicionar Projeto** (nova linha).
-- Botão **Criar Nova Versão**:
-  1. Marca versão atual `ativo = false`.
-  2. Copia todas as linhas com `versao = max+1`, `ativo = true`.
-  3. Abre nova versão em modo edição.
-- Versões antigas são read-only (apenas consulta).
+Sem alterações em BD, servidor ou outras páginas.
 
-### `/importar-extratos` — Importação CSV
-- Seletores: Ano e Mês de referência (preenche `mes_referencia`).
-- Dropzone drag-and-drop (react-dropzone) para um ou mais CSV.
-- Parser cliente-side (PapaParse):
-  - **Deteção automática** de separador (`,` ou `;`) e formato de data (`DD/MM/AAAA` ou `AAAA-MM-DD`).
-  - Mapeamento case-insensitive de cabeçalhos: `Conta`, `Descrição Conta`/`Descricao_Conta`, `Data`, `Nº Documento`/`Num_Documento`, `Diário`/`Diario`, `Movimento`, `Centro de Custo`/`Centro_Custo`, `Débito`/`Debito`, `Crédito`/`Credito`.
-  - Valores numéricos: aceita vírgula decimal e separadores de milhar.
-- Pré-visualização das primeiras 10 linhas + contagem total + avisos de linhas inválidas.
-- Botão **Importar** → insere em `transacoes_extrato` (batch insert via server function).
-- Histórico recente de importações (últimas 10).
+## Pergunta antes de implementar
 
-## 3. Stack técnica
-- TanStack Start + TanStack Query.
-- Server functions (`createServerFn` + `requireSupabaseAuth`) para todas as queries (CRUD orçamentos, criar nova versão, insert extratos, agregações do dashboard).
-- shadcn/ui (Table, Input, Select, Button, Card, Tabs, Dialog, Sonner para toasts).
-- Recharts para gráficos.
-- PapaParse para CSV.
-- Zod para validação de inputs (server fns e formulários).
-- Formatação PT-PT: `Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' })`, datas `dd/MM/yyyy`.
+Quando o **mês está vazio** mas o valor existe, o que queres?
 
-## 4. Ordem de implementação
-1. Ativar Lovable Cloud + auth email/password + página `/auth`.
-2. Migration: tabelas, GRANTs, RLS, índices.
-3. Layout autenticado + sidebar.
-4. Server functions de orçamento + página `/orcamento` (editar, criar versão, histórico).
-5. Server function de import + página `/importar-extratos` (parser, preview, insert).
-6. Server function de agregação + dashboard com KPIs e gráficos.
-7. QA visual no preview para os três ecrãs.
+1. **Replicar o valor pelos 12 meses** (ex.: `-70€` sem mês → `-70€` em cada mês, total `-840€`). Bom para custos mensais recorrentes.
+2. **Dividir o valor pelos 12 meses** (ex.: `-840€` sem mês → `-70€` em cada mês, total `-840€`). Bom para totais anuais.
+3. **Pôr tudo em janeiro** e deixar para editares depois.
 
-## Fora de âmbito (a confirmar mais tarde se necessário)
-- Multi-tenant / dados por utilizador (atualmente partilhados).
-- Mapeamento conta→projeto (Realizado é global por mês, não dividido por projeto).
-- Exportação para Excel/PDF.
+Diz-me qual queres e implemento.

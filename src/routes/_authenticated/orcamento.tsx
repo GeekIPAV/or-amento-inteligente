@@ -263,52 +263,57 @@ function OrcamentoPage() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const onUploadCsv = (file: File) => {
-    Papa.parse<Record<string, string>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (h) => h.trim().toLowerCase(),
-      complete: (res) => {
-        try {
-          const parsed: Omit<Linha, "id">[] = [];
-          for (const [i, raw] of res.data.entries()) {
-            const projeto = (raw.projeto ?? "").trim();
-            if (!projeto) continue;
-            const tipoStr = (raw.tipo ?? "").trim().toUpperCase();
-            if (tipoStr !== "RECEITA" && tipoStr !== "DESPESA")
-              throw new Error(`Linha ${i + 2}: tipo deve ser RECEITA ou DESPESA`);
-            const ano = Number(raw.ano);
-            const mes = Number(raw.mes);
-            const valorStr = String(raw.valor ?? "0").replace(/\s/g, "").replace(",", ".");
-            const valor = Number(valorStr);
-            if (!Number.isInteger(ano)) throw new Error(`Linha ${i + 2}: ano inválido`);
-            if (!Number.isInteger(mes) || mes < 1 || mes > 12)
-              throw new Error(`Linha ${i + 2}: mês inválido`);
-            if (!Number.isFinite(valor)) throw new Error(`Linha ${i + 2}: valor inválido`);
-            parsed.push({
-              projeto,
-              descricao: (raw.descricao ?? "").trim() || null,
-              rubrica: (raw.rubrica ?? "").trim() || null,
-              tipo: tipoStr as "RECEITA" | "DESPESA",
-              ano,
-              mes,
-              valor,
-            });
-          }
-          if (parsed.length === 0) throw new Error("CSV sem linhas válidas");
-          const nome = new Date().toISOString().replace("T", " ").slice(0, 19);
-          uploadMut.mutate({ nome, linhas: parsed });
-        } catch (e: any) {
-          toast.error(e?.message ?? "Erro a ler CSV");
-        } finally {
-          if (fileInputRef.current) fileInputRef.current.value = "";
-        }
-      },
-      error: (err) => {
-        toast.error(err.message ?? "Erro a ler CSV");
+  const onUploadCsv = async (file: File) => {
+    try {
+      const text = await file.text();
+      const { parseOrcamentoCSV } = await import("@/lib/csv-parser");
+      const res = parseOrcamentoCSV(text);
+
+      if (res.cabecalhosEmFalta.length > 0) {
+        toast.error(
+          `Faltam cabeçalhos obrigatórios: ${res.cabecalhosEmFalta.join(", ")}. ` +
+            `Aceito: centro de custos/projeto, descrição, mês (jan…dez ou 1-12), ano, valor, rubrica.`,
+        );
         if (fileInputRef.current) fileInputRef.current.value = "";
-      },
-    });
+        return;
+      }
+
+      const linhas: Omit<Linha, "id">[] = [];
+      for (const agg of res.linhas) {
+        for (let i = 0; i < 12; i++) {
+          const v = agg.meses[i];
+          if (!v) continue;
+          linhas.push({
+            projeto: agg.projeto,
+            descricao: agg.descricao_conta,
+            rubrica: agg.conta,
+            tipo: agg.tipo,
+            ano: agg.ano,
+            mes: i + 1,
+            valor: Math.round(v * 100) / 100,
+          });
+        }
+      }
+
+      if (linhas.length === 0) {
+        toast.error("CSV sem linhas válidas (valores a zero ou em falta).");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      const avisos: string[] = [];
+      if (res.semValor) avisos.push(`${res.semValor} sem valor`);
+      if (res.semMes) avisos.push(`${res.semMes} sem mês (distribuídas por 12 meses)`);
+      if (res.semAno) avisos.push(`${res.semAno} sem ano (usado ${new Date().getFullYear()})`);
+      if (avisos.length > 0) toast.message(`Avisos: ${avisos.join("; ")}`);
+
+      const nome = new Date().toISOString().replace("T", " ").slice(0, 19);
+      uploadMut.mutate({ nome, linhas });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro a ler CSV");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const saveCell = (row: Linha, patch: Partial<Linha>) => {
