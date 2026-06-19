@@ -817,17 +817,52 @@ function OrcamentoPage() {
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="h-8 border-b border-border/50"
+                    className={cn(
+                      "h-8 border-b border-border/50",
+                      row.getIsGrouped() && "bg-muted/40 font-medium",
+                    )}
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        style={{ width: cell.column.getSize() }}
-                        className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle"
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
+                    {row.getVisibleCells().map((cell) => {
+                      const isGrouped = cell.getIsGrouped();
+                      const isAggregated = cell.getIsAggregated();
+                      const isPlaceholder = cell.getIsPlaceholder();
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          style={{ width: cell.column.getSize() }}
+                          className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle"
+                        >
+                          {isGrouped ? (
+                            <button
+                              type="button"
+                              onClick={row.getToggleExpandedHandler()}
+                              className="flex items-center gap-1 text-left hover:text-primary"
+                              style={{ paddingLeft: `${row.depth * 12}px` }}
+                            >
+                              {row.getIsExpanded() ? (
+                                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                              )}
+                              <span className="truncate">
+                                {String(cell.getValue() ?? "—")}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ({row.subRows.length})
+                              </span>
+                            </button>
+                          ) : isAggregated ? (
+                            flexRender(
+                              cell.column.columnDef.aggregatedCell ??
+                                cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )
+                          ) : isPlaceholder ? null : (
+                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                          )}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))
               )}
