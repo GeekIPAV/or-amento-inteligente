@@ -47,11 +47,14 @@ function ResumoProjetosGrid({
   projetos,
   isLoading,
   ano,
+  onRowClick,
 }: {
   projetos: ProjRow[];
   isLoading: boolean;
   ano: number;
+  onRowClick?: (p: ProjRow) => void;
 }) {
+
   const columns: ColumnDef<ProjRow, any>[] = [
     {
       id: "nome",
