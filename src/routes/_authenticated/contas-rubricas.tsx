@@ -128,6 +128,15 @@ function ContasRubricasPage() {
     { id: "movimentos", dir: "desc" },
   );
 
+  const { widths, startResize, resizingId } = useColumnWidths({
+    rubrica: 220,
+    ncontas: 90,
+    movimentos: 110,
+    atribuidas: 480,
+  });
+
+
+
   const saveAll = () => {
     if (dirtyItems.length === 0) return;
     mut.mutate(dirtyItems);
