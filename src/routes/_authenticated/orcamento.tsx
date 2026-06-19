@@ -255,7 +255,7 @@ function OrcamentoPage() {
     mutationFn: (id: string) => apagarVersaoFn({ data: { id } }),
     onSuccess: () => {
       invalidarTudo();
-      setVersaoSel(null);
+      setVersaoSelPorAno({});
       toast.success("Versão apagada");
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar versão"),
