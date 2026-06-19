@@ -240,29 +240,24 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       if (n) r.nome = n;
     }
 
-    // Realizados — por rubrica (intervalo + multi-ano), via match conta→rubrica
-    type RubRow = { rubrica: string; tipo: "RECEITA" | "DESPESA"; orcado: number; realizado: number };
+    // Realizados — por rubrica (intervalo + multi-ano), via match conta→rubrica.
+    // Soma receita + despesa como valor absoluto executado por rubrica.
+    type RubRow = { rubrica: string; orcado: number; realizado: number };
     const rubMap = new Map<string, RubRow>();
     for (const r of porRubrica.values()) {
-      rubMap.set(`${r.rubrica}|${r.tipo}`, { ...r, realizado: 0 });
+      rubMap.set(r.rubrica, { ...r, realizado: 0 });
     }
     for (const y of anosAlvo) {
       const m = await rubricaRange(context.supabase, y, mesIni, mesFim);
       for (const r of m.values()) {
-        if (r.receita !== 0) {
-          const key = `${r.rubrica}|RECEITA`;
-          const e = rubMap.get(key);
-          if (e) e.realizado += r.receita;
-          else rubMap.set(key, { rubrica: r.rubrica, tipo: "RECEITA", orcado: 0, realizado: r.receita });
-        }
-        if (r.despesa !== 0) {
-          const key = `${r.rubrica}|DESPESA`;
-          const e = rubMap.get(key);
-          if (e) e.realizado += r.despesa;
-          else rubMap.set(key, { rubrica: r.rubrica, tipo: "DESPESA", orcado: 0, realizado: r.despesa });
-        }
+        const exec = Number(r.receita ?? 0) + Number(r.despesa ?? 0);
+        if (exec === 0) continue;
+        const e = rubMap.get(r.rubrica);
+        if (e) e.realizado += exec;
+        else rubMap.set(r.rubrica, { rubrica: r.rubrica, orcado: 0, realizado: exec });
       }
     }
+
 
     const grafico = Array.from({ length: mesFim - mesIni + 1 }, (_, i) => {
       const idx = mesIni - 1 + i;
