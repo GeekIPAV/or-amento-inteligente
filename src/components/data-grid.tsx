@@ -721,3 +721,84 @@ export function DataGrid<T>({
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* DataGrid Footer (totals)                                           */
+/* ------------------------------------------------------------------ */
+
+function DataGridFooter<T>({ table }: { table: ReturnType<typeof useReactTable<T>> }) {
+  const leafCols = table.getVisibleLeafColumns();
+  const sumCols = leafCols.filter(
+    (c) => (c.columnDef as any).aggregationFn === "sum",
+  );
+  if (sumCols.length === 0) return null;
+
+  const filteredRows = table.getFilteredRowModel().rows;
+  const totals = new Map<string, number>();
+  for (const c of sumCols) {
+    let s = 0;
+    for (const r of filteredRows) {
+      const v = Number(r.getValue(c.id));
+      if (Number.isFinite(v)) s += v;
+    }
+    totals.set(c.id, s);
+  }
+
+  let labelPlaced = false;
+
+  return (
+    <TableFooter className="sticky bottom-0 z-10 bg-muted/70 backdrop-blur">
+      <TableRow className="border-t-2 hover:bg-transparent">
+        {leafCols.map((c) => {
+          const style = { width: c.getSize() };
+          const meta = (c.columnDef as any).meta ?? {};
+          const fmt: "currency" | "number" = meta.totalFormat
+            ?? (meta.filterType === "number" && (c.columnDef as any).aggregationFn === "sum"
+              ? "currency"
+              : "number");
+          if (totals.has(c.id)) {
+            const v = totals.get(c.id) ?? 0;
+            return (
+              <TableCell
+                key={c.id}
+                style={style}
+                className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle font-semibold"
+              >
+                {fmt === "currency" ? (
+                  <CurrencyCell value={v} />
+                ) : (
+                  <div className="text-right tabular-nums">
+                    {new Intl.NumberFormat("pt-PT").format(v)}
+                  </div>
+                )}
+              </TableCell>
+            );
+          }
+          if (!labelPlaced) {
+            labelPlaced = true;
+            return (
+              <TableCell
+                key={c.id}
+                style={style}
+                className="h-8 overflow-hidden whitespace-nowrap px-2 py-1 align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Total
+                <span className="ml-1 normal-case text-muted-foreground/70">
+                  ({new Intl.NumberFormat("pt-PT").format(filteredRows.length)})
+                </span>
+              </TableCell>
+            );
+          }
+          return (
+            <TableCell
+              key={c.id}
+              style={style}
+              className="h-8 px-2 py-1"
+            />
+          );
+        })}
+      </TableRow>
+    </TableFooter>
+  );
+}
+
