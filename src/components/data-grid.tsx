@@ -499,7 +499,8 @@ export function DataGrid<T>({
 
       {/* Grid */}
       <div className="rounded-md border">
-        <div className="overflow-auto" style={{ maxHeight }}>
+        <div ref={scrollerRef} className="overflow-auto" style={{ maxHeight, height: maxHeight }}>
+
           <Table
             className="text-sm"
             style={{
