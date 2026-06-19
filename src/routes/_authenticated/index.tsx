@@ -555,7 +555,7 @@ function Dashboard() {
               <TabsTrigger value="grafico">Gráfico</TabsTrigger>
             </TabsList>
             <TabsContent value="tabela" className="mt-4">
-              <ResumoRubricasGrid rubricas={rubricas} isLoading={isLoading} ano={ano} />
+              <ResumoRubricasGrid rubricas={rubricas} isLoading={isLoading} ano={ano} onRowClick={(r) => openRubrica(r.rubrica)} />
             </TabsContent>
             <TabsContent value="grafico" className="mt-4">
               {rubricas.length === 0 ? (
