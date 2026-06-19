@@ -355,7 +355,7 @@ function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Orçamentado vs Realizado por mês</CardTitle>
-          <CardDescription>Visão mensal completa do ano {ano}</CardDescription>
+          <CardDescription>Clica numa barra para ver os detalhes · ano {ano}</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="ambos">
@@ -372,10 +372,10 @@ function Dashboard() {
                   <YAxis tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v)} />
                   <Tooltip formatter={(v: number) => currency.format(v)} labelFormatter={(m) => MESES_LONGOS[(m as number) - 1]} />
                   <Legend />
-                  <Bar dataKey="receitaOrc" name="Receita Orçada" fill="hsl(160 70% 75%)" />
-                  <Bar dataKey="receitaReal" name="Receita Realizada" fill="hsl(160 70% 45%)" />
-                  <Bar dataKey="despesaOrc" name="Despesa Orçada" fill="hsl(0 70% 80%)" />
-                  <Bar dataKey="despesaReal" name="Despesa Realizada" fill="hsl(0 70% 55%)" />
+                  <Bar dataKey="receitaOrc" name="Receita Orçada" fill="hsl(160 70% 75%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
+                  <Bar dataKey="receitaReal" name="Receita Realizada" fill="hsl(160 70% 45%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
+                  <Bar dataKey="despesaOrc" name="Despesa Orçada" fill="hsl(0 70% 80%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
+                  <Bar dataKey="despesaReal" name="Despesa Realizada" fill="hsl(0 70% 55%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
                 </BarChart>
               </ResponsiveContainer>
             </TabsContent>
@@ -391,8 +391,8 @@ function Dashboard() {
                       labelFormatter={(m) => MESES_LONGOS[(m as number) - 1]}
                     />
                     <Legend />
-                    <Bar dataKey={t === "receita" ? "receitaOrc" : "despesaOrc"} name={"Orçamentado\n"} fill="hsl(220 70% 60%)" />
-                    <Bar dataKey={t === "receita" ? "receitaReal" : "despesaReal"} name="Realizado" fill={t === "receita" ? "hsl(160 70% 45%)" : "hsl(0 70% 55%)"} />
+                    <Bar dataKey={t === "receita" ? "receitaOrc" : "despesaOrc"} name={"Orçamentado"} fill="hsl(220 70% 60%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, t === "receita" ? "RECEITA" : "DESPESA")} />
+                    <Bar dataKey={t === "receita" ? "receitaReal" : "despesaReal"} name="Realizado" fill={t === "receita" ? "hsl(160 70% 45%)" : "hsl(0 70% 55%)"} cursor="pointer" onClick={(d: any) => openMonth(d.mes, t === "receita" ? "RECEITA" : "DESPESA")} />
                   </BarChart>
                 </ResponsiveContainer>
               </TabsContent>
@@ -400,6 +400,7 @@ function Dashboard() {
           </Tabs>
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader>
