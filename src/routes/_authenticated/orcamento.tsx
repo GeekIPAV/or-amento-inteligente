@@ -157,7 +157,12 @@ function OrcamentoPage() {
     enabled: !!versaoVisivel,
   });
 
-  const linhas = (data ?? []) as Linha[];
+  const linhasRaw = (data ?? []) as Linha[];
+  const linhas = useMemo(() => {
+    const seen = new Map<string, Linha>();
+    for (const l of linhasRaw) if (!seen.has(l.id)) seen.set(l.id, l);
+    return Array.from(seen.values());
+  }, [linhasRaw]);
 
   const invalidarTudo = () => {
     qc.invalidateQueries({ queryKey: ["orcamentos"] });
@@ -366,7 +371,7 @@ function OrcamentoPage() {
     onColumnSizingChange: setColumnSizing,
     enableRowSelection: true,
     enableColumnResizing: true,
-    columnResizeMode: "onChange",
+    columnResizeMode: "onEnd",
     defaultColumn: { minSize: 60, size: 160, maxSize: 800 },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
