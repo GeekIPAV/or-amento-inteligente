@@ -6,20 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Wallet } from "lucide-react";
 import { lovable } from "@/integrations/lovable";
-
-async function handleGoogle() {
-  const result = await lovable.auth.signInWithOAuth("google", {
-    redirect_uri: window.location.origin,
-  });
-  if (result.error) {
-    toast.error(result.error.message ?? "Erro ao entrar com Google");
-    return;
-  }
-}
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -41,11 +30,43 @@ const schema = z.object({
   password: z.string().min(6, "Mínimo 6 caracteres"),
 });
 
+async function handleGoogle() {
+  const result = await lovable.auth.signInWithOAuth("google", {
+    redirect_uri: window.location.origin,
+  });
+  if (result.error) {
+    toast.error(result.error.message ?? "Erro ao entrar com Google");
+  }
+}
+
+async function handleMicrosoft(email: string) {
+  const domain = email.split("@")[1]?.trim().toLowerCase();
+  if (!domain) {
+    toast.error("Indica o teu email organizacional.");
+    return;
+  }
+  const { data, error } = await supabase.auth.signInWithSSO({
+    domain,
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) {
+    toast.error(
+      error.message?.includes("not found")
+        ? `O domínio ${domain} não está configurado para Microsoft SSO.`
+        : error.message ?? "Erro ao iniciar Microsoft SSO",
+    );
+    return;
+  }
+  if (data?.url) window.location.href = data.url;
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [msOpen, setMsOpen] = useState(false);
+  const [msEmail, setMsEmail] = useState("");
 
-  const handle = async (mode: "login" | "signup", form: HTMLFormElement) => {
+  const handleLogin = async (form: HTMLFormElement) => {
     const fd = new FormData(form);
     const parsed = schema.safeParse({ email: fd.get("email"), password: fd.get("password") });
     if (!parsed.success) {
@@ -54,20 +75,10 @@ function AuthPage() {
     }
     setLoading(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email: parsed.data.email,
-          password: parsed.data.password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast.success("Conta criada. Já pode entrar.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword(parsed.data);
-        if (error) throw error;
-        toast.success("Sessão iniciada");
-        navigate({ to: "/", replace: true });
-      }
+      const { error } = await supabase.auth.signInWithPassword(parsed.data);
+      if (error) throw error;
+      toast.success("Sessão iniciada");
+      navigate({ to: "/", replace: true });
     } catch (e: any) {
       toast.error(e.message ?? "Erro");
     } finally {
@@ -86,44 +97,70 @@ function AuthPage() {
           <CardDescription>Controlo orçamental plurianual</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button type="button" variant="outline" className="w-full mb-4" onClick={handleGoogle}>
-            Continuar com Google
-          </Button>
-          <div className="relative mb-4">
+          <div className="space-y-2">
+            <Button type="button" variant="outline" className="w-full" onClick={handleGoogle}>
+              Continuar com Google
+            </Button>
+            {!msOpen ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setMsOpen(true)}
+              >
+                Continuar com Microsoft
+              </Button>
+            ) : (
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleMicrosoft(msEmail);
+                }}
+              >
+                <Input
+                  type="email"
+                  placeholder="email@organizacao.pt"
+                  value={msEmail}
+                  onChange={(e) => setMsEmail(e.target.value)}
+                  required
+                  autoFocus
+                />
+                <Button type="submit" variant="outline">Entrar</Button>
+              </form>
+            )}
+          </div>
+
+          <div className="relative my-4">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-card px-2 text-muted-foreground">ou</span>
             </div>
           </div>
-          <Tabs defaultValue="login">
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Registar</TabsTrigger>
-            </TabsList>
-            {(["login", "signup"] as const).map((mode) => (
-              <TabsContent key={mode} value={mode}>
-                <form
-                  className="space-y-4 mt-4"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handle(mode, e.currentTarget);
-                  }}
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor={`email-${mode}`}>Email</Label>
-                    <Input id={`email-${mode}`} name="email" type="email" required autoComplete="email" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`password-${mode}`}>Palavra-passe</Label>
-                    <Input id={`password-${mode}`} name="password" type="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {mode === "login" ? "Entrar" : "Criar conta"}
-                  </Button>
-                </form>
-              </TabsContent>
-            ))}
-          </Tabs>
+
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleLogin(e.currentTarget);
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" name="email" type="email" required autoComplete="email" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Palavra-passe</Label>
+              <Input id="password" name="password" type="password" required minLength={6} autoComplete="current-password" />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "A entrar…" : "Entrar"}
+            </Button>
+          </form>
+
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            O acesso é por convite. Se é a tua primeira vez, abre o link que recebeste por email para definir a palavra-passe.
+          </p>
         </CardContent>
       </Card>
     </div>
