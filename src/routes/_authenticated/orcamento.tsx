@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
   ColumnOrderState,
+  FilterFn,
   SortingState,
   VisibilityState,
   flexRender,
@@ -52,16 +53,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Check,
   Eye,
+  Filter,
   Plus,
   Trash2,
   Upload,
-  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/orcamento")({
   component: OrcamentoPage,
@@ -78,7 +87,42 @@ type Linha = {
   valor: number;
 };
 
-const COLUMN_KEYS = ["projeto", "descricao", "rubrica", "tipo", "ano", "mes", "valor"] as const;
+type FilterValue =
+  | { operator: TextOp; value: string }
+  | { operator: NumOp; value: string }
+  | undefined;
+
+type TextOp = "contains" | "equals";
+type NumOp = "eq" | "gt" | "lt";
+
+const TEXT_OPS: { value: TextOp; label: string }[] = [
+  { value: "contains", label: "Contém" },
+  { value: "equals", label: "É exatamente" },
+];
+const NUM_OPS: { value: NumOp; label: string }[] = [
+  { value: "eq", label: "Igual a" },
+  { value: "gt", label: "Maior que" },
+  { value: "lt", label: "Menor que" },
+];
+
+const textFilterFn: FilterFn<Linha> = (row, id, filter: FilterValue) => {
+  if (!filter || !filter.value) return true;
+  const cell = String(row.getValue(id) ?? "").toLowerCase();
+  const v = String(filter.value).toLowerCase();
+  if (filter.operator === "equals") return cell === v;
+  return cell.includes(v);
+};
+
+const numFilterFn: FilterFn<Linha> = (row, id, filter: FilterValue) => {
+  if (!filter || filter.value === "" || filter.value == null) return true;
+  const n = Number(filter.value);
+  if (!Number.isFinite(n)) return true;
+  const cell = Number(row.getValue(id));
+  if (!Number.isFinite(cell)) return false;
+  if (filter.operator === "gt") return cell > n;
+  if (filter.operator === "lt") return cell < n;
+  return cell === n;
+};
 
 function OrcamentoPage() {
   const qc = useQueryClient();
@@ -104,6 +148,7 @@ function OrcamentoPage() {
   const versaoAtiva = versoes.find((v) => v.ativa) ?? null;
   const [versaoSel, setVersaoSel] = useState<string | null>(null);
   const versaoVisivel = versaoSel ?? versaoAtiva?.id ?? null;
+  const versaoVisivelObj = versoes.find((v) => v.id === versaoVisivel) ?? null;
 
   const { data, isLoading } = useQuery({
     queryKey: ["orcamentos", versaoVisivel],
@@ -121,13 +166,11 @@ function OrcamentoPage() {
     qc.invalidateQueries({ queryKey: ["meses-disponiveis"] });
   };
 
-
   const updateMut = useMutation({
     mutationFn: (vars: Linha) => updateFn({ data: vars }),
     onSuccess: invalidarTudo,
     onError: (e: any) => toast.error(e?.message ?? "Erro ao guardar"),
   });
-
   const insertMut = useMutation({
     mutationFn: (vars: Omit<Linha, "id">) => insertFn({ data: vars }),
     onSuccess: () => {
@@ -136,7 +179,6 @@ function OrcamentoPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao adicionar"),
   });
-
   const deleteMut = useMutation({
     mutationFn: (ids: string[]) => deleteFn({ data: { ids } }),
     onSuccess: () => {
@@ -146,7 +188,6 @@ function OrcamentoPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar"),
   });
-
   const uploadMut = useMutation({
     mutationFn: (vars: { nome: string; linhas: Omit<Linha, "id">[] }) =>
       criarVersaoFn({ data: { nome: vars.nome, ativar: true, linhas: vars.linhas } }),
@@ -157,7 +198,6 @@ function OrcamentoPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro no upload"),
   });
-
   const setAtivaMut = useMutation({
     mutationFn: (id: string) => setAtivaFn({ data: { id } }),
     onSuccess: () => {
@@ -166,7 +206,6 @@ function OrcamentoPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro a ativar versão"),
   });
-
   const apagarVersaoMut = useMutation({
     mutationFn: (id: string) => apagarVersaoFn({ data: { id } }),
     onSuccess: () => {
@@ -211,10 +250,7 @@ function OrcamentoPage() {
             });
           }
           if (parsed.length === 0) throw new Error("CSV sem linhas válidas");
-          const nome = new Date()
-            .toISOString()
-            .replace("T", " ")
-            .slice(0, 19);
+          const nome = new Date().toISOString().replace("T", " ").slice(0, 19);
           uploadMut.mutate({ nome, linhas: parsed });
         } catch (e: any) {
           toast.error(e?.message ?? "Erro a ler CSV");
@@ -235,13 +271,18 @@ function OrcamentoPage() {
     updateMut.mutate(next);
   };
 
-
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([
     "select",
-    ...COLUMN_KEYS,
+    "projeto",
+    "descricao",
+    "rubrica",
+    "tipo",
+    "ano",
+    "mes",
+    "valor",
   ]);
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [globalFilter, setGlobalFilter] = useState("");
@@ -252,7 +293,8 @@ function OrcamentoPage() {
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        size: 40,
+        enableColumnFilter: false,
+        size: 36,
         header: ({ table }) => (
           <Checkbox
             checked={
@@ -274,32 +316,21 @@ function OrcamentoPage() {
           />
         ),
       },
-      textCol("projeto", "Projeto", saveCell),
-      textCol("descricao", "Descrição", saveCell),
-      textCol("rubrica", "Rubrica", saveCell),
+      textColumn("projeto", "Projeto", saveCell),
+      textColumn("descricao", "Descrição", saveCell),
+      textColumn("rubrica", "Rubrica", saveCell),
       {
         accessorKey: "tipo",
         header: sortHeader("Tipo"),
+        filterFn: textFilterFn,
+        meta: { filterType: "text" as const },
         cell: ({ row }) => (
-          <Select
-            value={row.original.tipo}
-            onValueChange={(v) =>
-              saveCell(row.original, { tipo: v as Linha["tipo"] })
-            }
-          >
-            <SelectTrigger className="h-8 w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="DESPESA">DESPESA</SelectItem>
-              <SelectItem value="RECEITA">RECEITA</SelectItem>
-            </SelectContent>
-          </Select>
+          <TipoCell row={row.original} save={saveCell} />
         ),
       },
-      numCol("ano", "Ano", saveCell, 0),
-      numCol("mes", "Mês", saveCell, 0),
-      numCol("valor", "Valor", saveCell, 2),
+      numColumn("ano", "Ano", saveCell, 0),
+      numColumn("mes", "Mês", saveCell, 0),
+      numColumn("valor", "Valor", saveCell, 2),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -331,57 +362,43 @@ function OrcamentoPage() {
   });
 
   const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
-
-  const dragCol = useRef<string | null>(null);
-  const onDragStart = (id: string) => (e: React.DragEvent) => {
-    dragCol.current = id;
-    e.dataTransfer.effectAllowed = "move";
-  };
-  const onDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-  const onDrop = (targetId: string) => (e: React.DragEvent) => {
-    e.preventDefault();
-    const src = dragCol.current;
-    dragCol.current = null;
-    if (!src || src === targetId) return;
-    const order = [...columnOrder];
-    const from = order.indexOf(src);
-    const to = order.indexOf(targetId);
-    if (from < 0 || to < 0) return;
-    order.splice(from, 1);
-    order.splice(to, 0, src);
-    setColumnOrder(order);
-  };
+  const visibleRows = table.getRowModel().rows;
 
   return (
     <div className="space-y-4 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Orçamento</h1>
-          <p className="text-sm text-muted-foreground">
-            {linhas.length} linhas
-            {versaoAtiva && (
-              <> · Ativa: <span className="font-medium">{versaoAtiva.nome}</span></>
-            )}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Orçamento</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {linhas.length} linhas
+          {versaoVisivelObj && (
+            <>
+              {" · "}
+              {versaoSel && versaoSel !== versaoAtiva?.id ? "A ver" : "Ativa"}:{" "}
+              <span className="font-medium text-foreground">
+                {versaoVisivelObj.nome}
+              </span>
+            </>
+          )}
+        </p>
+      </div>
 
-
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+        <div className="flex items-center gap-2">
           {versoes.length > 0 && (
             <Select
               value={versaoVisivel ?? undefined}
               onValueChange={(v) => setVersaoSel(v)}
             >
-              <SelectTrigger className="h-9 w-[220px]">
+              <SelectTrigger className="h-8 w-[200px]">
                 <SelectValue placeholder="Versão" />
               </SelectTrigger>
               <SelectContent>
                 {versoes.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
-                    {v.nome}{v.ativa ? " (ativa)" : ""}
+                    {v.nome}
+                    {v.ativa ? " (ativa)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -393,7 +410,7 @@ function OrcamentoPage() {
                 Versões
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuContent align="start" className="w-72">
               <DropdownMenuLabel>Versão usada no dashboard</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {versoes.map((v) => (
@@ -422,11 +439,6 @@ function OrcamentoPage() {
                   </Button>
                 </div>
               ))}
-              {versoes.length === 0 && (
-                <div className="px-2 py-2 text-xs text-muted-foreground">
-                  Sem versões.
-                </div>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <input
@@ -448,14 +460,18 @@ function OrcamentoPage() {
             <Upload className="mr-2 h-4 w-4" />
             {uploadMut.isPending ? "A importar…" : "Upload CSV"}
           </Button>
+        </div>
 
-
+        <div className="min-w-[200px] max-w-md flex-1 px-2">
           <Input
-            placeholder="Pesquisar…"
+            placeholder="Pesquisar em todas as colunas…"
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-64"
+            className="h-8"
           />
+        </div>
+
+        <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -505,66 +521,76 @@ function OrcamentoPage() {
                 deleteMut.mutate(selectedIds);
             }}
           >
-            <Trash2 className="mr-2 h-4 w-4" /> Apagar ({selectedIds.length})
+            <Trash2 className="mr-2 h-4 w-4" /> Apagar
+            {selectedIds.length > 0 && ` (${selectedIds.length})`}
           </Button>
         </div>
       </div>
 
+      {/* Data Grid */}
       <div className="rounded-md border">
-        <div className="max-h-[70vh] overflow-auto">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-background">
+        <div className="max-h-[72vh] overflow-auto">
+          <Table className="text-sm">
+            <TableHeader className="sticky top-0 z-10 bg-muted/50 backdrop-blur">
               {table.getHeaderGroups().map((hg) => (
-                <TableRow key={hg.id}>
-                  {hg.headers.map((h) => {
-                    const canDrag = h.column.id !== "select";
-                    return (
-                      <TableHead
-                        key={h.id}
-                        draggable={canDrag}
-                        onDragStart={canDrag ? onDragStart(h.column.id) : undefined}
-                        onDragOver={canDrag ? onDragOver : undefined}
-                        onDrop={canDrag ? onDrop(h.column.id) : undefined}
-                        className={canDrag ? "cursor-move" : ""}
-                      >
-                        {h.isPlaceholder
-                          ? null
-                          : flexRender(h.column.columnDef.header, h.getContext())}
-                        {h.column.getCanFilter() && (
-                          <Input
-                            value={(h.column.getFilterValue() as string) ?? ""}
-                            onChange={(e) =>
-                              h.column.setFilterValue(e.target.value)
-                            }
-                            placeholder="filtrar…"
-                            className="mt-1 h-7 text-xs"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        )}
-                      </TableHead>
-                    );
-                  })}
+                <TableRow key={hg.id} className="hover:bg-transparent">
+                  {hg.headers.map((h) => (
+                    <TableHead
+                      key={h.id}
+                      className="h-8 whitespace-nowrap px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      {h.isPlaceholder
+                        ? null
+                        : flexRender(h.column.columnDef.header, h.getContext())}
+                    </TableHead>
+                  ))}
                 </TableRow>
               ))}
+              {/* Filter sub-header */}
+              <TableRow className="hover:bg-transparent">
+                {table.getHeaderGroups()[0]?.headers.map((h) => (
+                  <TableHead
+                    key={`f-${h.id}`}
+                    className="h-8 whitespace-nowrap px-2 py-1"
+                  >
+                    {h.column.getCanFilter() ? (
+                      <FilterPopover column={h.column} />
+                    ) : null}
+                  </TableHead>
+                ))}
+              </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center text-muted-foreground"
+                  >
                     A carregar…
                   </TableCell>
                 </TableRow>
-              ) : table.getRowModel().rows.length === 0 ? (
+              ) : visibleRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center text-muted-foreground"
+                  >
                     Sem linhas.
                   </TableCell>
                 </TableRow>
               ) : (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                visibleRows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="h-8 border-b border-border/50"
+                  >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="align-top">
+                      <TableCell
+                        key={cell.id}
+                        className="h-8 whitespace-nowrap px-2 py-1 align-middle"
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -579,11 +605,15 @@ function OrcamentoPage() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Headers                                                                    */
+/* -------------------------------------------------------------------------- */
+
 function sortHeader(label: string) {
   return ({ column }: any) => (
     <button
       type="button"
-      className="flex items-center gap-1 font-medium"
+      className="flex items-center gap-1 font-semibold uppercase tracking-wide"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
     >
       {label}
@@ -592,58 +622,321 @@ function sortHeader(label: string) {
       ) : column.getIsSorted() === "desc" ? (
         <ArrowDown className="h-3 w-3" />
       ) : (
-        <ArrowUpDown className="h-3 w-3 opacity-50" />
+        <ArrowUpDown className="h-3 w-3 opacity-40" />
       )}
     </button>
   );
 }
 
-function textCol(
+/* -------------------------------------------------------------------------- */
+/* Filter popover                                                             */
+/* -------------------------------------------------------------------------- */
+
+function FilterPopover({ column }: { column: any }) {
+  const filterType = (column.columnDef.meta?.filterType ?? "text") as
+    | "text"
+    | "number";
+  const current = column.getFilterValue() as FilterValue;
+  const active = !!current?.value;
+  const ops = filterType === "number" ? NUM_OPS : TEXT_OPS;
+
+  const [operator, setOperator] = useState<string>(
+    current?.operator ?? ops[0].value,
+  );
+  const [value, setValue] = useState<string>(current?.value ?? "");
+
+  useEffect(() => {
+    setOperator(current?.operator ?? ops[0].value);
+    setValue(current?.value ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.operator, current?.value]);
+
+  const apply = (op: string, val: string) => {
+    if (!val) column.setFilterValue(undefined);
+    else column.setFilterValue({ operator: op, value: val });
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "flex h-6 w-full items-center gap-1 rounded px-1.5 text-xs transition-colors",
+            active
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <Filter className="h-3 w-3" />
+          <span className="truncate">
+            {active
+              ? `${ops.find((o) => o.value === current!.operator)?.label}: ${current!.value}`
+              : "filtrar…"}
+          </span>
+          {active && (
+            <X
+              className="ml-auto h-3 w-3 shrink-0 hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                column.setFilterValue(undefined);
+              }}
+            />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="start">
+        <div className="space-y-2">
+          <Select
+            value={operator}
+            onValueChange={(v) => {
+              setOperator(v);
+              apply(v, value);
+            }}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ops.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            autoFocus
+            type={filterType === "number" ? "number" : "text"}
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              apply(operator, e.target.value);
+            }}
+            placeholder="Valor…"
+            className="h-8"
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Editable cells (read mode by default, edit mode on click)                  */
+/* -------------------------------------------------------------------------- */
+
+function EditableTextCell({
+  value,
+  onSave,
+  align = "left",
+}: {
+  value: string | null;
+  onSave: (v: string | null) => void;
+  align?: "left" | "right";
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+
+  useEffect(() => {
+    if (!editing) setDraft(value ?? "");
+  }, [value, editing]);
+
+  if (!editing) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setEditing(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === "F2") setEditing(true);
+        }}
+        className={cn(
+          "min-h-6 cursor-text rounded px-1 py-0.5 text-sm hover:bg-muted/60",
+          align === "right" && "text-right tabular-nums",
+          !value && "text-muted-foreground/60",
+        )}
+      >
+        {value ?? "—"}
+      </div>
+    );
+  }
+
+  return (
+    <Input
+      autoFocus
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        const v = draft.trim();
+        if ((v === "" ? null : v) !== value) onSave(v === "" ? null : v);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") {
+          setDraft(value ?? "");
+          setEditing(false);
+        }
+      }}
+      className={cn(
+        "h-6 border-none bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+        align === "right" && "text-right tabular-nums",
+      )}
+    />
+  );
+}
+
+function EditableNumberCell({
+  value,
+  onSave,
+  decimals,
+}: {
+  value: number;
+  onSave: (v: number) => void;
+  decimals: number;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value ?? ""));
+
+  useEffect(() => {
+    if (!editing) setDraft(String(value ?? ""));
+  }, [value, editing]);
+
+  const formatted =
+    decimals > 0
+      ? new Intl.NumberFormat("pt-PT", {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        }).format(value ?? 0)
+      : String(value ?? "");
+
+  if (!editing) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setEditing(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === "F2") setEditing(true);
+        }}
+        className="min-h-6 cursor-text rounded px-1 py-0.5 text-right text-sm tabular-nums hover:bg-muted/60"
+      >
+        {formatted}
+      </div>
+    );
+  }
+
+  return (
+    <Input
+      autoFocus
+      type="number"
+      step={decimals === 0 ? 1 : 0.01}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        const n = Number(draft);
+        if (Number.isFinite(n) && n !== value) onSave(n);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") {
+          setDraft(String(value ?? ""));
+          setEditing(false);
+        }
+      }}
+      className="h-6 border-none bg-transparent px-1 py-0 text-right text-sm tabular-nums shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+    />
+  );
+}
+
+function TipoCell({
+  row,
+  save,
+}: {
+  row: Linha;
+  save: (row: Linha, patch: Partial<Linha>) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className={cn(
+          "rounded px-1.5 py-0.5 text-xs font-medium hover:bg-muted/60",
+          row.tipo === "RECEITA"
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-rose-600 dark:text-rose-400",
+        )}
+      >
+        {row.tipo}
+      </button>
+    );
+  }
+  return (
+    <Select
+      open
+      value={row.tipo}
+      onValueChange={(v) => {
+        save(row, { tipo: v as Linha["tipo"] });
+        setEditing(false);
+      }}
+      onOpenChange={(o) => {
+        if (!o) setEditing(false);
+      }}
+    >
+      <SelectTrigger className="h-6 border-none bg-transparent px-1 text-xs shadow-none focus:ring-0">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="DESPESA">DESPESA</SelectItem>
+        <SelectItem value="RECEITA">RECEITA</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Column definitions                                                         */
+/* -------------------------------------------------------------------------- */
+
+function textColumn(
   key: "projeto" | "descricao" | "rubrica",
   label: string,
-  save: (row: any, patch: any) => void,
+  save: (row: Linha, patch: Partial<Linha>) => void,
 ): ColumnDef<Linha> {
   return {
     accessorKey: key,
     header: sortHeader(label),
+    filterFn: textFilterFn,
+    meta: { filterType: "text" as const },
     cell: ({ row }) => (
-      <Input
-        defaultValue={(row.original as any)[key] ?? ""}
-        onBlur={(e) => {
-          const v = e.target.value.trim();
-          save(row.original, { [key]: v === "" ? null : v });
-        }}
-        className="h-8 min-w-[140px]"
+      <EditableTextCell
+        value={(row.original as any)[key] ?? null}
+        onSave={(v) => save(row.original, { [key]: v } as Partial<Linha>)}
       />
     ),
   };
 }
 
-function numCol(
+function numColumn(
   key: "ano" | "mes" | "valor",
   label: string,
-  save: (row: any, patch: any) => void,
+  save: (row: Linha, patch: Partial<Linha>) => void,
   decimals: number,
 ): ColumnDef<Linha> {
   return {
     accessorKey: key,
     header: sortHeader(label),
-    filterFn: (row, id, filterValue) => {
-      if (!filterValue) return true;
-      const v = String(row.getValue(id) ?? "");
-      return v.includes(String(filterValue));
-    },
+    filterFn: numFilterFn,
+    meta: { filterType: "number" as const },
     cell: ({ row }) => (
-      <Input
-        type="number"
-        step={decimals === 0 ? 1 : 0.01}
-        defaultValue={(row.original as any)[key]}
-        onBlur={(e) => {
-          const n = Number(e.target.value);
-          if (!Number.isFinite(n)) return;
-          save(row.original, { [key]: n });
-        }}
-        className="h-8 w-[110px] text-right"
+      <EditableNumberCell
+        value={(row.original as any)[key] as number}
+        onSave={(v) => save(row.original, { [key]: v } as Partial<Linha>)}
+        decimals={decimals}
       />
     ),
   };
