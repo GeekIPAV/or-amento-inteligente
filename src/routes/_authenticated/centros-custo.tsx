@@ -30,7 +30,7 @@ type Projeto = {
   centros_custo: string[];
   num_centros: number;
 };
-type CC = { centro_custo: string; projeto: string | null; linhas: number };
+type CC = { centro_custo: string; projetos: string[]; linhas: number };
 
 function CentrosCustoPage() {
   const projetosFn = useServerFn(listarProjetos);
