@@ -233,10 +233,9 @@ function CentrosCustoPage() {
                     <CCPicker
                       ccs={ccList}
                       selected={selected}
-                      ccToProjeto={ccToProjeto}
-                      currentProjeto={p.projeto}
                       onToggle={(c) => toggleCC(p.projeto, c)}
                     />
+
                   </div>
                 </div>
               </div>
@@ -251,22 +250,16 @@ function CentrosCustoPage() {
 function CCPicker({
   ccs,
   selected,
-  ccToProjeto,
-  currentProjeto,
   onToggle,
 }: {
   ccs: CC[];
   selected: string[];
-  ccToProjeto: Map<string, string>;
-  currentProjeto: string;
   onToggle: (cc: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
 
   const filtered = ccs.filter((c) => {
-    const owner = ccToProjeto.get(c.centro_custo);
-    if (owner && owner !== currentProjeto) return false;
     if (!q) return true;
     return c.centro_custo.toLowerCase().includes(q.toLowerCase());
   });
