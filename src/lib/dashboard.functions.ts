@@ -194,13 +194,16 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       if (n) r.nome = n;
     }
 
-    const grafico = Array.from({ length: 12 }, (_, i) => ({
-      mes: i + 1,
-      receitaOrc: orcMensal.RECEITA[i],
-      receitaReal: realMensal.RECEITA[i],
-      despesaOrc: orcMensal.DESPESA[i],
-      despesaReal: realMensal.DESPESA[i],
-    }));
+    const grafico = Array.from({ length: mesFim - mesIni + 1 }, (_, i) => {
+      const idx = mesIni - 1 + i;
+      return {
+        mes: idx + 1,
+        receitaOrc: orcMensal.RECEITA[idx],
+        receitaReal: realMensal.RECEITA[idx],
+        despesaOrc: orcMensal.DESPESA[idx],
+        despesaReal: realMensal.DESPESA[idx],
+      };
+    });
 
     return {
       kpis: { receitaOrc, receitaReal, despesaOrc, despesaReal },
