@@ -58,6 +58,8 @@ import {
   Eye,
   Plus,
   Trash2,
+  Upload,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
