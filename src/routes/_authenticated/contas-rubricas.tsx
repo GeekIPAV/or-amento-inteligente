@@ -20,7 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Save, ChevronsUpDown, X } from "lucide-react";
 import { SummaryCard } from "@/components/data-grid";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHeader, TableRow } from "@/components/ui/table";
 import { SortHeader, useSortableRows, useColumnWidths } from "@/components/sortable-table";
 
 export const Route = createFileRoute("/_authenticated/contas-rubricas")({
@@ -287,7 +287,31 @@ function ContasRubricasPage() {
               })
             )}
           </TableBody>
+          {sorted.length > 0 && (
+            <TableFooter className="bg-muted/70">
+              <TableRow className="border-t-2 hover:bg-transparent">
+                <TableCell className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Total
+                  <span className="ml-1 normal-case text-muted-foreground/70">
+                    ({sorted.length})
+                  </span>
+                </TableCell>
+                <TableCell className="px-3 py-2 text-right font-semibold tabular-nums">
+                  {new Intl.NumberFormat("pt-PT").format(
+                    sorted.reduce((a, r) => a + (sel[r.rubrica]?.length ?? 0), 0),
+                  )}
+                </TableCell>
+                <TableCell className="px-3 py-2 text-right font-semibold tabular-nums">
+                  {new Intl.NumberFormat("pt-PT").format(
+                    sorted.reduce((a, r) => a + movimentosByRubrica(r.rubrica), 0),
+                  )}
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            </TableFooter>
+          )}
         </Table>
+
       </div>
     </div>
   );
