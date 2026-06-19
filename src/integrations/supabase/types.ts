@@ -287,12 +287,24 @@ export type Database = {
           ano: number
         }[]
       }
+      atribuir_contas_rubrica: {
+        Args: { p_contas: string[]; p_rubrica: string }
+        Returns: undefined
+      }
       centros_custo_listagem: {
         Args: never
         Returns: {
           centro_custo: string
           linhas: number
           nome_projeto: string
+        }[]
+      }
+      contas_disponiveis: {
+        Args: never
+        Returns: {
+          conta: string
+          descricao_conta: string
+          rubrica: string
         }[]
       }
       contas_listagem: {
@@ -333,6 +345,14 @@ export type Database = {
       rubricas_disponiveis: {
         Args: never
         Returns: {
+          rubrica: string
+        }[]
+      }
+      rubricas_listagem: {
+        Args: never
+        Returns: {
+          contas: string[]
+          num_contas: number
           rubrica: string
         }[]
       }

@@ -1,51 +1,27 @@
-## Problema
+## Inverter a lógica: Rubricas → Contas
 
-A página **Orçamento** importa CSV com um parser inline rígido (`onUploadCsv` em `src/routes/_authenticated/orcamento.tsx`) que:
+Substituir a página atual (Contas → Rubrica) por uma nova abordagem onde cada **Rubrica** do orçamento pode ter **uma ou várias Contas** associadas.
 
-- Exige cabeçalhos exatos `projeto, tipo, ano, mes, valor`.
-- Rebenta se `tipo` não for `RECEITA`/`DESPESA`.
-- Rejeita linhas com `mes` vazio, `0`, ou `mes` em texto (`jan`, `fev`…).
-- Não reconhece `centro de custos`, `Mês`, `Valor (dos eur)`, `descrição`, `Rubrica`.
+### Alterações
 
-O CSV `Orcamento_Consolidado_2025.csv` usa esses cabeçalhos alternativos e tem linhas onde algumas colunas podem vir vazias.
+**1. Base de dados (migration)**
+- A tabela `conta_rubricas` já tem `conta` como UNIQUE (1 conta → 1 rubrica), o que mantém a regra "uma conta só pertence a uma rubrica" — não é preciso alterar a estrutura.
+- Nova função RPC `rubricas_listagem()` que devolve, para cada rubrica distinta do orçamento:
+  - `rubrica`
+  - `contas` (array das contas atribuídas)
+  - `num_contas` (contagem)
+- Nova função RPC `contas_disponiveis()` que devolve todas as contas distintas dos movimentos (`transacoes_extrato`) com a descrição e a rubrica atualmente atribuída (se existir), para o seletor.
 
-Já existe `parseOrcamentoCSV` em `src/lib/csv-parser.ts` que normaliza estes cabeçalhos e infere `tipo` pelo sinal — mas também ela descarta linhas com `mes` inválido ou `valor=0`.
+**2. Server functions (`src/lib/contas-rubricas.functions.ts`)**
+- Adicionar `listarRubricas` (chama `rubricas_listagem`).
+- Adicionar `listarContasDisponiveis` (chama `contas_disponiveis`).
+- Adicionar `atribuirContasARubrica({ rubrica, contas[] })`: faz upsert das contas selecionadas com a rubrica indicada, e limpa (set rubrica=null ou delete) as contas que deixaram de pertencer a essa rubrica.
 
-## Solução
+**3. UI (`src/routes/_authenticated/contas-rubricas.tsx`)**
+- Reescrever a página: lista de **Rubricas** à esquerda, e para cada uma um **multi-select** de Contas (com a descrição visível) à direita.
+- Mostrar resumo: nº rubricas, nº contas atribuídas, nº contas sem rubrica.
+- Manter o padrão do "Gravar" que aplica todas as edições pendentes de uma só vez (como nos Centros de Custo).
+- Se uma conta já estiver atribuída a outra rubrica e for selecionada noutra, mover (a UNIQUE em `conta` garante consistência).
 
-1. Trocar o parser inline pelo `parseOrcamentoCSV` (com pequenas alterações para ser mais tolerante).
-2. Tornar o parser tolerante a campos vazios:
-   - **Mês vazio / `0` / não reconhecido**: tratar como "ano inteiro" → distribuir o valor pelos 12 meses (uma linha por mês com `valor/12`), ou — mais simples e claro — criar **12 linhas iguais com o mesmo valor** se for um valor mensal recorrente. Vou pedir confirmação ao utilizador antes de assumir (ver pergunta abaixo).
-   - **Ano vazio**: usar o ano atual como fallback e avisar no toast (`X linhas sem ano usaram 2026`).
-   - **Centro de custos vazio**: usar `"(Sem projeto)"`.
-   - **Descrição/Rubrica vazias**: aceitar como `null`.
-   - **Valor vazio ou `0`**: ignorar a linha silenciosamente (não é erro).
-3. Achatar o resultado agregado em linhas individuais `{projeto, descricao, rubrica, tipo, ano, mes, valor}` e enviar para `uploadMut`.
-4. Mostrar um toast resumo: `N linhas importadas, M ignoradas (sem valor), K com mês em falta tratadas como anuais`.
-
-## Detalhes técnicos
-
-Em `src/lib/csv-parser.ts` (`parseOrcamentoCSV`):
-
-- Quando `mes` não resolve para 1-12 (vazio, `0`, texto desconhecido) **e** `valor ≠ 0`: marcar a linha como "anual" e replicá-la pelos 12 meses no bucket (em vez de descartar).
-- Ano em falta: usar `new Date().getFullYear()`.
-- Devolver contadores extra: `semMes`, `semValor`, para o toast.
-
-Em `src/routes/_authenticated/orcamento.tsx` (`onUploadCsv`):
-
-- Ler o ficheiro como texto, chamar `parseOrcamentoCSV`.
-- Validar apenas que existem cabeçalhos para `centro de custos` e `valor` — os restantes têm fallbacks.
-- Achatar `OrcamentoLinhaAgg.meses[]` em linhas `Linha` (uma por mês com valor ≠ 0).
-- Chamar `uploadMut.mutate({ nome, linhas })`.
-
-Sem alterações em BD, servidor ou outras páginas.
-
-## Pergunta antes de implementar
-
-Quando o **mês está vazio** mas o valor existe, o que queres?
-
-1. **Replicar o valor pelos 12 meses** (ex.: `-70€` sem mês → `-70€` em cada mês, total `-840€`). Bom para custos mensais recorrentes.
-2. **Dividir o valor pelos 12 meses** (ex.: `-840€` sem mês → `-70€` em cada mês, total `-840€`). Bom para totais anuais.
-3. **Pôr tudo em janeiro** e deixar para editares depois.
-
-Diz-me qual queres e implemento.
+### Perguntas de confirmação
+- Manter o nome da página/rota `/contas-rubricas` e a entrada no menu como "Contas / Rubricas"? Ou prefere renomear para "Rubricas / Contas"?
