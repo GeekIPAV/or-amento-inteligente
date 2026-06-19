@@ -596,7 +596,71 @@ function Dashboard() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Resumo por Rubrica</CardTitle>
+          <CardDescription>
+            Comparação entre orçamentado e executado, via match conta → rubrica · {descricaoPeriodo}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="tabela">
+            <TabsList>
+              <TabsTrigger value="tabela">Tabela</TabsTrigger>
+              <TabsTrigger value="grafico">Gráfico</TabsTrigger>
+            </TabsList>
+            <TabsContent value="tabela" className="mt-4">
+              <ResumoRubricasGrid rubricas={rubricas} isLoading={isLoading} ano={ano} />
+            </TabsContent>
+            <TabsContent value="grafico" className="mt-4">
+              <Tabs defaultValue="ambos">
+                <TabsList>
+                  <TabsTrigger value="ambos">Ambos</TabsTrigger>
+                  <TabsTrigger value="receita">Receita</TabsTrigger>
+                  <TabsTrigger value="despesa">Despesa</TabsTrigger>
+                </TabsList>
+                {(["ambos", "receita", "despesa"] as const).map((t) => {
+                  const dados = t === "ambos"
+                    ? rubricas.map((r) => ({
+                        rubrica: `${r.rubrica} (${r.tipo === "RECEITA" ? "R" : "D"})`,
+                        Orçamentado: r.orcado,
+                        Realizado: r.realizado,
+                      }))
+                    : rubricas
+                        .filter((r) => r.tipo === (t === "receita" ? "RECEITA" : "DESPESA"))
+                        .map((r) => ({ rubrica: r.rubrica, Orçamentado: r.orcado, Realizado: r.realizado }));
+                  const altura = Math.max(280, dados.length * 36 + 60);
+                  const corReal = t === "despesa" ? "hsl(0 70% 55%)" : "hsl(160 70% 45%)";
+                  return (
+                    <TabsContent key={t} value={t} className="mt-4">
+                      {dados.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-12">Sem dados para apresentar.</p>
+                      ) : (
+                        <div style={{ height: altura }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dados} layout="vertical" margin={{ left: 20, right: 20 }}>
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                              <XAxis type="number" tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v as number)} />
+                              <YAxis type="category" dataKey="rubrica" width={200} />
+                              <Tooltip formatter={(v: number) => currency.format(v)} />
+                              <Legend />
+                              <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" />
+                              <Bar dataKey="Realizado" fill={corReal} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
       <DashboardPeek scope={peek} open={!!peek} onOpenChange={(v) => { if (!v) setPeek(null); }} />
+
     </div>
   );
 
