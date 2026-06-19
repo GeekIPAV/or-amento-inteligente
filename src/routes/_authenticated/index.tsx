@@ -355,6 +355,17 @@ function Dashboard() {
       tipo: tipo ?? null,
     });
   };
+  const openRubrica = (rubrica: string) => {
+    setPeek({
+      titulo: rubrica,
+      subtitulo: `Rubrica · ${descricaoPeriodo}`,
+      anos: anosAlvo,
+      mesIni: (data?.intervalo as any)?.mesIni ?? 1,
+      mesFim: (data?.intervalo as any)?.mesFim ?? 12,
+      rubrica,
+    });
+  };
+
 
 
   const descricaoPeriodo = (() => {
