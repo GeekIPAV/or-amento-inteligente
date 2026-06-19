@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 function AdminPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listUsuarios);
-  const criarFn = useServerFn(criarUsuario);
+  const criarFn = useServerFn(convidarUsuario);
   const removerFn = useServerFn(removerUsuario);
   const roleFn = useServerFn(atualizarRole);
 
@@ -69,17 +69,20 @@ function AdminPage() {
 
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<AdminUser | null>(null);
-  const [form, setForm] = useState({ email: "", password: "", role: "user" as "user" | "admin" });
+  const [form, setForm] = useState({ email: "", role: "user" as "user" | "admin" });
 
   const criar = useMutation({
-    mutationFn: () => criarFn({ data: form }),
+    mutationFn: () =>
+      criarFn({
+        data: { ...form, redirectTo: `${window.location.origin}/aceitar-convite` },
+      }),
     onSuccess: () => {
-      toast.success("Utilizador criado.");
+      toast.success("Convite enviado por email.");
       setOpen(false);
-      setForm({ email: "", password: "", role: "user" });
+      setForm({ email: "", role: "user" });
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao criar utilizador."),
+    onError: (e: any) => toast.error(e.message ?? "Erro ao enviar convite."),
   });
 
   const remover = useMutation({
