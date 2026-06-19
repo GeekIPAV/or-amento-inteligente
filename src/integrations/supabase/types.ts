@@ -100,6 +100,33 @@ export type Database = {
         }
         Relationships: []
       }
+      orcamento_versoes: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orcamentos: {
         Row: {
           ano: number
@@ -113,6 +140,7 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_orcamento"]
           updated_at: string
           valor: number
+          versao_id: string
         }
         Insert: {
           ano: number
@@ -126,6 +154,7 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_orcamento"]
           updated_at?: string
           valor?: number
+          versao_id: string
         }
         Update: {
           ano?: number
@@ -139,8 +168,17 @@ export type Database = {
           tipo?: Database["public"]["Enums"]["tipo_orcamento"]
           updated_at?: string
           valor?: number
+          versao_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_versao_id_fkey"
+            columns: ["versao_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_versoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transacoes_extrato: {
         Row: {

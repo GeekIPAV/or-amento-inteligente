@@ -19,7 +19,12 @@ import {
   inserirLinhaOrcamento,
   atualizarLinhaOrcamento,
   apagarLinhasOrcamento,
+  listarVersoesOrcamento,
+  criarVersaoOrcamentoCsv,
+  definirVersaoAtiva,
+  apagarVersaoOrcamento,
 } from "@/lib/orcamentos.functions";
+import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -53,6 +58,8 @@ import {
   Eye,
   Plus,
   Trash2,
+  Upload,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -79,20 +86,41 @@ function OrcamentoPage() {
   const insertFn = useServerFn(inserirLinhaOrcamento);
   const updateFn = useServerFn(atualizarLinhaOrcamento);
   const deleteFn = useServerFn(apagarLinhasOrcamento);
+  const listVersoesFn = useServerFn(listarVersoesOrcamento);
+  const criarVersaoFn = useServerFn(criarVersaoOrcamentoCsv);
+  const setAtivaFn = useServerFn(definirVersaoAtiva);
+  const apagarVersaoFn = useServerFn(apagarVersaoOrcamento);
+
+  const versoesQ = useQuery({
+    queryKey: ["orcamento-versoes"],
+    queryFn: () => listVersoesFn(),
+  });
+  const versoes = (versoesQ.data ?? []) as Array<{
+    id: string;
+    nome: string;
+    ativa: boolean;
+    created_at: string;
+  }>;
+  const versaoAtiva = versoes.find((v) => v.ativa) ?? null;
+  const [versaoSel, setVersaoSel] = useState<string | null>(null);
+  const versaoVisivel = versaoSel ?? versaoAtiva?.id ?? null;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["orcamentos"],
-    queryFn: () => listFn(),
+    queryKey: ["orcamentos", versaoVisivel],
+    queryFn: () => listFn({ data: { versaoId: versaoVisivel } }),
+    enabled: !!versaoVisivel,
   });
 
   const linhas = (data ?? []) as Linha[];
 
   const invalidarTudo = () => {
     qc.invalidateQueries({ queryKey: ["orcamentos"] });
+    qc.invalidateQueries({ queryKey: ["orcamento-versoes"] });
     qc.invalidateQueries({ queryKey: ["resumo"] });
     qc.invalidateQueries({ queryKey: ["anos"] });
     qc.invalidateQueries({ queryKey: ["meses-disponiveis"] });
   };
+
 
   const updateMut = useMutation({
     mutationFn: (vars: Linha) => updateFn({ data: vars }),
@@ -119,12 +147,94 @@ function OrcamentoPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar"),
   });
 
+  const uploadMut = useMutation({
+    mutationFn: (vars: { nome: string; linhas: Omit<Linha, "id">[] }) =>
+      criarVersaoFn({ data: { nome: vars.nome, ativar: true, linhas: vars.linhas } }),
+    onSuccess: (r: any) => {
+      invalidarTudo();
+      setVersaoSel(null);
+      toast.success(`Nova versão criada (${r?.total ?? 0} linhas)`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro no upload"),
+  });
+
+  const setAtivaMut = useMutation({
+    mutationFn: (id: string) => setAtivaFn({ data: { id } }),
+    onSuccess: () => {
+      invalidarTudo();
+      toast.success("Versão ativa atualizada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro a ativar versão"),
+  });
+
+  const apagarVersaoMut = useMutation({
+    mutationFn: (id: string) => apagarVersaoFn({ data: { id } }),
+    onSuccess: () => {
+      invalidarTudo();
+      setVersaoSel(null);
+      toast.success("Versão apagada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar versão"),
+  });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const onUploadCsv = (file: File) => {
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (h) => h.trim().toLowerCase(),
+      complete: (res) => {
+        try {
+          const parsed: Omit<Linha, "id">[] = [];
+          for (const [i, raw] of res.data.entries()) {
+            const projeto = (raw.projeto ?? "").trim();
+            if (!projeto) continue;
+            const tipoStr = (raw.tipo ?? "").trim().toUpperCase();
+            if (tipoStr !== "RECEITA" && tipoStr !== "DESPESA")
+              throw new Error(`Linha ${i + 2}: tipo deve ser RECEITA ou DESPESA`);
+            const ano = Number(raw.ano);
+            const mes = Number(raw.mes);
+            const valorStr = String(raw.valor ?? "0").replace(/\s/g, "").replace(",", ".");
+            const valor = Number(valorStr);
+            if (!Number.isInteger(ano)) throw new Error(`Linha ${i + 2}: ano inválido`);
+            if (!Number.isInteger(mes) || mes < 1 || mes > 12)
+              throw new Error(`Linha ${i + 2}: mês inválido`);
+            if (!Number.isFinite(valor)) throw new Error(`Linha ${i + 2}: valor inválido`);
+            parsed.push({
+              projeto,
+              descricao: (raw.descricao ?? "").trim() || null,
+              rubrica: (raw.rubrica ?? "").trim() || null,
+              tipo: tipoStr as "RECEITA" | "DESPESA",
+              ano,
+              mes,
+              valor,
+            });
+          }
+          if (parsed.length === 0) throw new Error("CSV sem linhas válidas");
+          const nome = new Date()
+            .toISOString()
+            .replace("T", " ")
+            .slice(0, 19);
+          uploadMut.mutate({ nome, linhas: parsed });
+        } catch (e: any) {
+          toast.error(e?.message ?? "Erro a ler CSV");
+        } finally {
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      },
+      error: (err) => {
+        toast.error(err.message ?? "Erro a ler CSV");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      },
+    });
+  };
 
   const saveCell = (row: Linha, patch: Partial<Linha>) => {
     const next = { ...row, ...patch } as Linha;
     if (JSON.stringify(next) === JSON.stringify(row)) return;
     updateMut.mutate(next);
   };
+
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -252,9 +362,94 @@ function OrcamentoPage() {
           <h1 className="text-2xl font-semibold">Orçamento</h1>
           <p className="text-sm text-muted-foreground">
             {linhas.length} linhas
+            {versaoAtiva && (
+              <> · Ativa: <span className="font-medium">{versaoAtiva.nome}</span></>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+
+
+          {versoes.length > 0 && (
+            <Select
+              value={versaoVisivel ?? undefined}
+              onValueChange={(v) => setVersaoSel(v)}
+            >
+              <SelectTrigger className="h-9 w-[220px]">
+                <SelectValue placeholder="Versão" />
+              </SelectTrigger>
+              <SelectContent>
+                {versoes.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.nome}{v.ativa ? " (ativa)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={versoes.length === 0}>
+                Versões
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuLabel>Versão usada no dashboard</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {versoes.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex items-center gap-2 px-2 py-1.5 text-sm"
+                >
+                  <Checkbox
+                    checked={v.ativa}
+                    onCheckedChange={(c) => {
+                      if (c && !v.ativa) setAtivaMut.mutate(v.id);
+                    }}
+                  />
+                  <span className="flex-1 truncate">{v.nome}</span>
+                  {v.ativa && <Check className="h-3 w-3 text-primary" />}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      if (confirm(`Apagar versão "${v.nome}" e todas as suas linhas?`))
+                        apagarVersaoMut.mutate(v.id);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              {versoes.length === 0 && (
+                <div className="px-2 py-2 text-xs text-muted-foreground">
+                  Sem versões.
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onUploadCsv(f);
+            }}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={uploadMut.isPending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {uploadMut.isPending ? "A importar…" : "Upload CSV"}
+          </Button>
+
+
           <Input
             placeholder="Pesquisar…"
             value={globalFilter}
