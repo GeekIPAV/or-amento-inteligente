@@ -22,17 +22,70 @@ function AceitarConvitePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      // Supabase JS detecta o hash automaticamente; basta esperar a sessão.
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
+    let cancelled = false;
+
+    const finish = (session: { user: { email?: string | null } } | null) => {
+      if (cancelled) return;
+      if (!session) {
         toast.error("Convite inválido ou expirado. Pede um novo convite.");
         navigate({ to: "/auth" });
         return;
       }
-      setEmail(data.session.user.email ?? null);
+      setEmail(session.user.email ?? null);
       setReady(true);
+    };
+
+    (async () => {
+      // 1) Fluxo PKCE: ?code=... no query string
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      const errDesc = url.searchParams.get("error_description") ?? url.hash.match(/error_description=([^&]+)/)?.[1];
+      if (errDesc) {
+        toast.error(decodeURIComponent(errDesc));
+        navigate({ to: "/auth" });
+        return;
+      }
+      if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          toast.error(error.message);
+          navigate({ to: "/auth" });
+          return;
+        }
+        // limpar URL
+        window.history.replaceState({}, "", window.location.pathname);
+        finish(data.session);
+        return;
+      }
+
+      // 2) Fluxo implicit: #access_token=... no hash — supabase processa, esperar via listener
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        finish(data.session);
+        return;
+      }
+
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) {
+          sub.subscription.unsubscribe();
+          finish(session);
+        }
+      });
+
+      // timeout de segurança
+      setTimeout(async () => {
+        if (cancelled) return;
+        const { data: again } = await supabase.auth.getSession();
+        if (!again.session) {
+          sub.subscription.unsubscribe();
+          finish(null);
+        }
+      }, 3000);
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   const submit = async () => {
