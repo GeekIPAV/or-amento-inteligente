@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   listarProjetos,
   listarCentrosCustoDisponiveis,
-  atribuirCentrosCustoAProjeto,
+  guardarCentroCusto,
 } from "@/lib/centros-custo.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,146 +25,171 @@ export const Route = createFileRoute("/_authenticated/centros-custo")({
   component: CentrosCustoPage,
 });
 
-type Projeto = {
-  projeto: string;
-  centros_custo: string[];
-  num_centros: number;
+type CC = {
+  centro_custo: string;
+  nome_display: string;
+  projetos: string[];
+  linhas: number;
 };
-type CC = { centro_custo: string; projetos: string[]; linhas: number };
 
 function CentrosCustoPage() {
-  const projetosFn = useServerFn(listarProjetos);
-  const ccFn = useServerFn(listarCentrosCustoDisponiveis);
-  const saveFn = useServerFn(atribuirCentrosCustoAProjeto);
+  const listFn = useServerFn(listarCentrosCustoDisponiveis);
+  const projsFn = useServerFn(listarProjetos);
+  const saveFn = useServerFn(guardarCentroCusto);
   const qc = useQueryClient();
 
-  const { data: projetos, isLoading } = useQuery({
-    queryKey: ["projetos-listagem"],
-    queryFn: () => projetosFn(),
-  });
-  const { data: ccs } = useQuery({
+  const { data: ccs, isLoading } = useQuery({
     queryKey: ["centros-custo-disponiveis"],
-    queryFn: () => ccFn(),
+    queryFn: () => listFn(),
+  });
+  const { data: projetos } = useQuery({
+    queryKey: ["projetos-disponiveis"],
+    queryFn: () => projsFn(),
   });
 
-  const [sel, setSel] = useState<Record<string, string[]>>({});
+  // edits per CC
+  const [edits, setEdits] = useState<
+    Record<string, { nome_display: string; projetos: string[] }>
+  >({});
   useEffect(() => {
-    if (!projetos) return;
-    setSel(
-      Object.fromEntries(projetos.map((p) => [p.projeto, [...p.centros_custo]])),
+    if (!ccs) return;
+    setEdits(
+      Object.fromEntries(
+        ccs.map((c) => [
+          c.centro_custo,
+          { nome_display: c.nome_display, projetos: [...c.projetos] },
+        ]),
+      ),
     );
-  }, [projetos]);
+  }, [ccs]);
 
   const [filter, setFilter] = useState("");
 
+  const original = useMemo(
+    () =>
+      new Map(
+        (ccs ?? []).map((c) => [
+          c.centro_custo,
+          {
+            nome_display: c.nome_display,
+            projetos: [...c.projetos].sort(),
+          },
+        ]),
+      ),
+    [ccs],
+  );
+
+  const isDirty = (cc: string) => {
+    const a = edits[cc];
+    const b = original.get(cc);
+    if (!a || !b) return false;
+    if (a.nome_display.trim() !== b.nome_display) return true;
+    const ap = [...a.projetos].sort();
+    if (ap.length !== b.projetos.length) return true;
+    return ap.some((x, i) => x !== b.projetos[i]);
+  };
+
+  const dirtyItems = useMemo(() => {
+    return Object.entries(edits)
+      .filter(([cc, v]) => v.nome_display.trim() !== "" && isDirty(cc))
+      .map(([centro_custo, v]) => ({
+        centro_custo,
+        nome_display: v.nome_display.trim(),
+        projetos: v.projetos,
+      }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edits, original]);
+
   const mut = useMutation({
     mutationFn: async (
-      items: Array<{ projeto: string; centros_custo: string[] }>,
+      items: Array<{
+        centro_custo: string;
+        nome_display: string;
+        projetos: string[];
+      }>,
     ) => {
       for (const v of items) await saveFn({ data: v });
       return items.length;
     },
     onSuccess: (n) => {
-      toast.success(n === 1 ? "Projeto guardado" : `${n} projetos guardados`);
-      qc.invalidateQueries({ queryKey: ["projetos-listagem"] });
+      toast.success(n === 1 ? "Guardado" : `${n} centros de custo guardados`);
       qc.invalidateQueries({ queryKey: ["centros-custo-disponiveis"] });
       qc.invalidateQueries({ queryKey: ["resumo"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const original = useMemo(
-    () =>
-      new Map(
-        (projetos ?? []).map((p) => [p.projeto, [...p.centros_custo].sort()]),
-      ),
-    [projetos],
-  );
-
-  const isDirty = (projeto: string) => {
-    const a = [...(sel[projeto] ?? [])].sort();
-    const b = original.get(projeto) ?? [];
-    if (a.length !== b.length) return true;
-    return a.some((x, i) => x !== b[i]);
-  };
-
-  const dirtyItems = useMemo(() => {
-    return Object.entries(sel)
-      .filter(([p]) => isDirty(p))
-      .map(([projeto, centros_custo]) => ({ projeto, centros_custo }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sel, original]);
-
   const ccList = ccs ?? [];
-  const ccProjetos = useMemo(() => {
-    const m = new Map<string, Set<string>>();
-    for (const [p, list] of Object.entries(sel)) {
-      for (const c of list) {
-        if (!m.has(c)) m.set(c, new Set());
-        m.get(c)!.add(p);
-      }
-    }
-    return m;
-  }, [sel]);
+  const filtered = ccList.filter((c) => {
+    const s = filter.toLowerCase();
+    if (!s) return true;
+    const e = edits[c.centro_custo];
+    return (
+      c.centro_custo.toLowerCase().includes(s) ||
+      (e?.nome_display ?? "").toLowerCase().includes(s)
+    );
+  });
 
-  const totalCC = ccList.length;
-  const ccAtribuidos = ccProjetos.size;
-  const ccSemProjeto = totalCC - ccAtribuidos;
+  const comNome = ccList.filter(
+    (c) => (edits[c.centro_custo]?.nome_display ?? "").trim() !== "",
+  ).length;
 
-  const filtered = (projetos ?? []).filter((p) =>
-    p.projeto.toLowerCase().includes(filter.toLowerCase()),
-  );
-
-  const saveAll = () => {
-    if (dirtyItems.length === 0) return;
-    mut.mutate(dirtyItems);
-  };
-
-  const toggleCC = (projeto: string, cc: string) => {
-    setSel((prev) => {
-      const cur = prev[projeto] ?? [];
+  const toggleProjeto = (cc: string, projeto: string) => {
+    setEdits((prev) => {
+      const cur = prev[cc] ?? { nome_display: "", projetos: [] };
+      const has = cur.projetos.includes(projeto);
       return {
         ...prev,
-        [projeto]: cur.includes(cc)
-          ? cur.filter((c) => c !== cc)
-          : [...cur, cc],
+        [cc]: {
+          ...cur,
+          projetos: has
+            ? cur.projetos.filter((p) => p !== projeto)
+            : [...cur.projetos, projeto],
+        },
       };
     });
   };
 
-  const removeCC = (projeto: string, cc: string) => {
-    setSel((prev) => ({
-      ...prev,
-      [projeto]: (prev[projeto] ?? []).filter((c) => c !== cc),
-    }));
+  const setNome = (cc: string, nome: string) => {
+    setEdits((prev) => {
+      const cur = prev[cc] ?? { nome_display: "", projetos: [] };
+      return { ...prev, [cc]: { ...cur, nome_display: nome } };
+    });
+  };
+
+  const saveOne = (cc: string) => {
+    const e = edits[cc];
+    if (!e || e.nome_display.trim() === "") return;
+    mut.mutate([
+      {
+        centro_custo: cc,
+        nome_display: e.nome_display.trim(),
+        projetos: e.projetos,
+      },
+    ]);
   };
 
   return (
     <div className="space-y-4 p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Projetos / Centros de Custo
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight">Centros de Custo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            A cada projeto do orçamento, atribui um ou vários centros de custo
-            dos movimentos. Cada centro de custo só pode pertencer a um projeto.
+            Para cada centro de custo dos movimentos: escolhe um ou vários
+            projetos do orçamento e define o Nome do Projeto que aparece em
+            todo o lado.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <SummaryCard
-            label="Projetos"
-            value={String((projetos ?? []).length)}
+            label="Centros de Custo"
+            value={String(ccList.length)}
             tone="receita"
           />
+          <SummaryCard label="Com nome" value={String(comNome)} tone="receita" />
           <SummaryCard
-            label="CC atribuídos"
-            value={String(ccAtribuidos)}
-            tone="receita"
-          />
-          <SummaryCard
-            label="CC sem projeto"
-            value={String(ccSemProjeto)}
+            label="Sem nome"
+            value={String(ccList.length - comNome)}
             tone="despesa"
           />
         </div>
@@ -172,13 +197,13 @@ function CentrosCustoPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <Input
-          placeholder="Pesquisar projetos…"
+          placeholder="Pesquisar…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="h-9 max-w-xs"
         />
         <Button
-          onClick={saveAll}
+          onClick={() => dirtyItems.length > 0 && mut.mutate(dirtyItems)}
           disabled={dirtyItems.length === 0 || mut.isPending}
           className="ml-auto"
         >
@@ -189,87 +214,142 @@ function CentrosCustoPage() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="text-sm text-muted-foreground">A carregar…</div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-md border p-6 text-sm text-muted-foreground">
-          Nenhum projeto encontrado no orçamento.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((p) => {
-            const selected = sel[p.projeto] ?? [];
-            const dirty = isDirty(p.projeto);
-            return (
-              <div
-                key={p.projeto}
-                className={`rounded-md border p-3 ${dirty ? "border-primary/60 bg-primary/5" : ""}`}
-              >
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="min-w-[200px] flex-shrink-0">
-                    <div className="font-medium">{p.projeto}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {selected.length} CC{selected.length === 1 ? "" : "s"}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-1 flex-wrap items-center gap-1.5">
-                    {selected.map((c) => (
-                      <Badge
-                        key={c}
-                        variant="secondary"
-                        className="gap-1 font-mono text-xs"
+      <div className="overflow-hidden rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium w-[180px]">
+                Centro de Custo (movimentos)
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                Projetos do Orçamento
+              </th>
+              <th className="px-3 py-2 text-left font-medium w-[260px]">
+                Nome do Projeto
+              </th>
+              <th className="px-3 py-2 w-[80px]"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-3 py-6 text-center text-muted-foreground"
+                >
+                  A carregar…
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-3 py-6 text-center text-muted-foreground"
+                >
+                  Sem centros de custo.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((c) => {
+                const e = edits[c.centro_custo] ?? {
+                  nome_display: "",
+                  projetos: [],
+                };
+                const dirty = isDirty(c.centro_custo);
+                return (
+                  <tr
+                    key={c.centro_custo}
+                    className={`border-t ${dirty ? "bg-primary/5" : ""}`}
+                  >
+                    <td className="px-3 py-2 align-top">
+                      <div className="font-mono text-xs">{c.centro_custo}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {c.linhas} mov.
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {e.projetos.map((p) => (
+                          <Badge
+                            key={p}
+                            variant="secondary"
+                            className="gap-1 text-xs"
+                          >
+                            {p}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleProjeto(c.centro_custo, p)
+                              }
+                              className="ml-0.5 rounded hover:bg-foreground/10"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        <ProjetoPicker
+                          projetos={projetos ?? []}
+                          selected={e.projetos}
+                          onToggle={(p) => toggleProjeto(c.centro_custo, p)}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      <Input
+                        value={e.nome_display}
+                        onChange={(ev) =>
+                          setNome(c.centro_custo, ev.target.value)
+                        }
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter" && dirty) saveOne(c.centro_custo);
+                        }}
+                        placeholder="Nome do projeto…"
+                        className="h-8 text-sm"
+                      />
+                    </td>
+                    <td className="px-3 py-2 align-top text-right">
+                      <Button
+                        size="sm"
+                        variant={dirty ? "default" : "ghost"}
+                        disabled={!dirty || mut.isPending}
+                        onClick={() => saveOne(c.centro_custo)}
                       >
-                        {c}
-                        <button
-                          type="button"
-                          onClick={() => removeCC(p.projeto, c)}
-                          className="ml-0.5 rounded hover:bg-foreground/10"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                    <CCPicker
-                      ccs={ccList}
-                      selected={selected}
-                      onToggle={(c) => toggleCC(p.projeto, c)}
-                    />
-
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                        <Save className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function CCPicker({
-  ccs,
+function ProjetoPicker({
+  projetos,
   selected,
   onToggle,
 }: {
-  ccs: CC[];
+  projetos: string[];
   selected: string[];
-  onToggle: (cc: string) => void;
+  onToggle: (projeto: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
 
-  const filtered = ccs.filter((c) => {
-    if (!q) return true;
-    return c.centro_custo.toLowerCase().includes(q.toLowerCase());
-  });
+  const filtered = projetos.filter((p) =>
+    !q ? true : p.toLowerCase().includes(q.toLowerCase()),
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-7">
           <ChevronsUpDown className="mr-1 h-3.5 w-3.5" />
-          Adicionar CC
+          Adicionar projeto
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[360px] p-0" align="start">
@@ -277,36 +357,31 @@ function CCPicker({
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Pesquisar centro de custo…"
+            placeholder="Pesquisar projeto do orçamento…"
             className="h-8"
             autoFocus
           />
         </div>
         <ScrollArea className="h-72">
           <div className="p-1">
-            {filtered.map((c) => {
-              const isSel = selected.includes(c.centro_custo);
+            {filtered.map((p) => {
+              const isSel = selected.includes(p);
               return (
                 <label
-                  key={c.centro_custo}
+                  key={p}
                   className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent"
                 >
                   <Checkbox
                     checked={isSel}
-                    onCheckedChange={() => onToggle(c.centro_custo)}
+                    onCheckedChange={() => onToggle(p)}
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-mono text-xs">{c.centro_custo}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {c.linhas} movimento{c.linhas === 1 ? "" : "s"}
-                    </div>
-                  </div>
+                  <span className="text-sm">{p}</span>
                 </label>
               );
             })}
             {filtered.length === 0 && (
               <div className="p-3 text-sm text-muted-foreground">
-                Sem centros de custo.
+                Sem projetos no orçamento.
               </div>
             )}
           </div>
