@@ -10,20 +10,32 @@ export const resumoDashboard = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { ano, mes } = data;
 
-    // Orçamentos do ano — paginar para ultrapassar o limite default do PostgREST (1000)
+    // Versão ativa do orçamento
+    const { data: versaoAtiva } = await context.supabase
+      .from("orcamento_versoes")
+      .select("id")
+      .eq("ativa", true)
+      .maybeSingle();
+    const versaoId = versaoAtiva?.id ?? null;
+
+    // Orçamentos do ano (apenas versão ativa) — paginar para ultrapassar 1000
     const orcs: Array<{ projeto: string; tipo: string; mes: number; valor: number }> = [];
-    const PAGE = 1000;
-    for (let from = 0; ; from += PAGE) {
-      const { data: chunk, error: errO } = await context.supabase
-        .from("orcamentos")
-        .select("projeto, tipo, mes, valor")
-        .eq("ano", ano)
-        .range(from, from + PAGE - 1);
-      if (errO) throw new Error(errO.message);
-      if (!chunk || chunk.length === 0) break;
-      orcs.push(...(chunk as typeof orcs));
-      if (chunk.length < PAGE) break;
+    if (versaoId) {
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data: chunk, error: errO } = await context.supabase
+          .from("orcamentos")
+          .select("projeto, tipo, mes, valor")
+          .eq("ano", ano)
+          .eq("versao_id", versaoId)
+          .range(from, from + PAGE - 1);
+        if (errO) throw new Error(errO.message);
+        if (!chunk || chunk.length === 0) break;
+        orcs.push(...(chunk as typeof orcs));
+        if (chunk.length < PAGE) break;
+      }
     }
+
 
 
     const orcMensal = {
