@@ -9,7 +9,7 @@ import { importarExtrato, historicoImportacoes, apagarMesExtrato } from "@/lib/e
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, X, Trash2 } from "lucide-react";
 import { currency, MESES_LONGOS } from "@/lib/format";
