@@ -378,7 +378,7 @@ function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Resumo por Projeto</CardTitle>
-          <CardDescription>Centros de custo acumulados até {MESES_LONGOS[mes - 1]}</CardDescription>
+          <CardDescription>Centros de custo · {descricaoPeriodo}</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="tabela">
