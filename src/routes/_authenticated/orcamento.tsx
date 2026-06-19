@@ -383,6 +383,8 @@ function OrcamentoPage() {
       rowSelection,
       globalFilter,
       columnSizing,
+      grouping,
+      expanded,
     },
     getRowId: (r) => r.id,
     onSortingChange: setSorting,
@@ -392,6 +394,8 @@ function OrcamentoPage() {
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
     onColumnSizingChange: setColumnSizing,
+    onGroupingChange: setGrouping,
+    onExpandedChange: setExpanded,
     enableRowSelection: true,
     enableColumnResizing: true,
     columnResizeMode: "onEnd",
@@ -399,8 +403,36 @@ function OrcamentoPage() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getGroupedRowModel: getGroupedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    autoResetExpanded: false,
     globalFilterFn: "includesString",
   });
+
+  const filteredFlatRows = table.getFilteredRowModel().flatRows;
+  const summary = useMemo(() => {
+    let receitas = 0;
+    let despesas = 0;
+    for (const r of filteredFlatRows) {
+      const l = r.original as Linha;
+      if (l.tipo === "RECEITA") receitas += Number(l.valor) || 0;
+      else despesas += Number(l.valor) || 0;
+    }
+    return { receitas, despesas, saldo: receitas - despesas };
+  }, [filteredFlatRows]);
+  const fmtEur = (n: number) =>
+    new Intl.NumberFormat("pt-PT", {
+      style: "currency",
+      currency: "EUR",
+    }).format(n);
+
+  const GROUPABLE: { id: string; label: string }[] = [
+    { id: "projeto", label: "Projeto" },
+    { id: "rubrica", label: "Rubrica" },
+    { id: "tipo", label: "Tipo" },
+    { id: "ano", label: "Ano" },
+    { id: "mes", label: "Mês" },
+  ];
 
   const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
   const visibleRows = table.getRowModel().rows;
