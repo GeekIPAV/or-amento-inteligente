@@ -12,7 +12,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, X, Trash2 } from "lucide-react";
-import { MESES_LONGOS as _MESES_LONGOS } from "@/lib/format";
+
 import { cn } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import {
