@@ -44,15 +44,31 @@ function CentrosCustoPage() {
   }, [data]);
 
   const mut = useMutation({
-    mutationFn: (v: { centro_custo: string; nome_projeto: string }) =>
-      saveFn({ data: v }),
-    onSuccess: () => {
-      toast.success("Nome do projeto guardado");
+    mutationFn: async (items: Array<{ centro_custo: string; nome_projeto: string }>) => {
+      for (const v of items) {
+        await saveFn({ data: v });
+      }
+      return items.length;
+    },
+    onSuccess: (n) => {
+      toast.success(
+        n === 1 ? "Nome do projeto guardado" : `${n} nomes de projeto guardados`,
+      );
       qc.invalidateQueries({ queryKey: ["centros-custo"] });
       qc.invalidateQueries({ queryKey: ["resumo"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const dirtyItems = useMemo(() => {
+    const map = new Map((data ?? []).map((r) => [r.centro_custo, r.nome_projeto]));
+    return Object.entries(nomes)
+      .filter(([cc, v]) => v.trim() !== "" && v !== map.get(cc))
+      .map(([centro_custo, nome_projeto]) => ({
+        centro_custo,
+        nome_projeto: nome_projeto.trim(),
+      }));
+  }, [nomes, data]);
 
   const rows = (data ?? []) as Row[];
 
