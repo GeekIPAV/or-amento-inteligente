@@ -210,7 +210,8 @@ function OrcamentoPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao guardar"),
   });
   const insertMut = useMutation({
-    mutationFn: (vars: Omit<Linha, "id">) => insertFn({ data: vars }),
+    mutationFn: (vars: Omit<Linha, "id"> & { versaoId: string }) =>
+      insertFn({ data: vars }),
     onSuccess: () => {
       invalidarTudo();
       toast.success("Linha adicionada");
