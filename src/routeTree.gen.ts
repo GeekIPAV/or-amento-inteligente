@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AuthenticatedPromptsRouteImport } from './routes/_authenticated/prompts'
 import { Route as AuthenticatedOrcamentoRouteImport } from './routes/_authenticated/orcamento'
 import { Route as AuthenticatedMovimentosRouteImport } from './routes/_authenticated/movimentos'
 import { Route as AuthenticatedImportarExtratosRouteImport } from './routes/_authenticated/importar-extratos'
@@ -40,6 +41,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedPromptsRoute = AuthenticatedPromptsRouteImport.update({
+  id: '/prompts',
+  path: '/prompts',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedOrcamentoRoute = AuthenticatedOrcamentoRouteImport.update({
   id: '/orcamento',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
+  '/prompts': typeof AuthenticatedPromptsRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
+  '/prompts': typeof AuthenticatedPromptsRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/_authenticated/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/_authenticated/movimentos': typeof AuthenticatedMovimentosRoute
   '/_authenticated/orcamento': typeof AuthenticatedOrcamentoRoute
+  '/_authenticated/prompts': typeof AuthenticatedPromptsRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/importar-extratos'
     | '/movimentos'
     | '/orcamento'
+    | '/prompts'
     | '/api/chat'
     | '/chat/$threadId'
     | '/chat/'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/importar-extratos'
     | '/movimentos'
     | '/orcamento'
+    | '/prompts'
     | '/api/chat'
     | '/'
     | '/chat/$threadId'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/_authenticated/importar-extratos'
     | '/_authenticated/movimentos'
     | '/_authenticated/orcamento'
+    | '/_authenticated/prompts'
     | '/api/chat'
     | '/_authenticated/'
     | '/_authenticated/chat/$threadId'
@@ -202,6 +214,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/prompts': {
+      id: '/_authenticated/prompts'
+      path: '/prompts'
+      fullPath: '/prompts'
+      preLoaderRoute: typeof AuthenticatedPromptsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/orcamento': {
       id: '/_authenticated/orcamento'
@@ -282,6 +301,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportarExtratosRoute: typeof AuthenticatedImportarExtratosRoute
   AuthenticatedMovimentosRoute: typeof AuthenticatedMovimentosRoute
   AuthenticatedOrcamentoRoute: typeof AuthenticatedOrcamentoRoute
+  AuthenticatedPromptsRoute: typeof AuthenticatedPromptsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -292,6 +312,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportarExtratosRoute: AuthenticatedImportarExtratosRoute,
   AuthenticatedMovimentosRoute: AuthenticatedMovimentosRoute,
   AuthenticatedOrcamentoRoute: AuthenticatedOrcamentoRoute,
+  AuthenticatedPromptsRoute: AuthenticatedPromptsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

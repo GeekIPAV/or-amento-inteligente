@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban, MessageSquare, Users } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban, MessageSquare, Users, Sparkles } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ const nav = [
   { to: "/centros-custo", label: "Centros de Custo", icon: FolderKanban, adminOnly: false },
   { to: "/importar-extratos", label: "Importar Extratos", icon: Upload, adminOnly: false },
   { to: "/chat", label: "Assistente", icon: MessageSquare, adminOnly: false },
+  { to: "/prompts", label: "Prompts", icon: Sparkles, adminOnly: false },
   { to: "/admin", label: "Utilizadores", icon: Users, adminOnly: true },
 ] as const;
 
