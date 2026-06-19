@@ -134,19 +134,35 @@ function CentrosCustoPage() {
     (c) => (edits[c.centro_custo]?.nome_display ?? "").trim() !== "",
   ).length;
 
+  const projetoToCC = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [cc, e] of Object.entries(edits)) {
+      for (const p of e.projetos) m.set(p, cc);
+    }
+    return m;
+  }, [edits]);
+
+  const projetosPorAtribuir = useMemo(() => {
+    const lista = projetos ?? [];
+    return lista.filter((p) => !projetoToCC.has(p)).length;
+  }, [projetos, projetoToCC]);
+
   const toggleProjeto = (cc: string, projeto: string) => {
     setEdits((prev) => {
+      const next: typeof prev = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (k === cc) continue;
+        next[k] = { ...v, projetos: v.projetos.filter((p) => p !== projeto) };
+      }
       const cur = prev[cc] ?? { nome_display: "", projetos: [] };
       const has = cur.projetos.includes(projeto);
-      return {
-        ...prev,
-        [cc]: {
-          ...cur,
-          projetos: has
-            ? cur.projetos.filter((p) => p !== projeto)
-            : [...cur.projetos, projeto],
-        },
+      next[cc] = {
+        ...cur,
+        projetos: has
+          ? cur.projetos.filter((p) => p !== projeto)
+          : [...cur.projetos, projeto],
       };
+      return next;
     });
   };
 
@@ -192,6 +208,12 @@ function CentrosCustoPage() {
             value={String(ccList.length - comNome)}
             tone="despesa"
           />
+          <SummaryCard
+            label="Projetos por atribuir"
+            value={String(projetosPorAtribuir)}
+            tone={projetosPorAtribuir > 0 ? "despesa" : "receita"}
+          />
+
         </div>
       </div>
 
@@ -290,8 +312,11 @@ function CentrosCustoPage() {
                         <ProjetoPicker
                           projetos={projetos ?? []}
                           selected={e.projetos}
+                          projetoToCC={projetoToCC}
+                          currentCC={c.centro_custo}
                           onToggle={(p) => toggleProjeto(c.centro_custo, p)}
                         />
+
                       </div>
                     </td>
                     <td className="px-3 py-2 align-top">
@@ -331,18 +356,25 @@ function CentrosCustoPage() {
 function ProjetoPicker({
   projetos,
   selected,
+  projetoToCC,
+  currentCC,
   onToggle,
 }: {
   projetos: string[];
   selected: string[];
+  projetoToCC: Map<string, string>;
+  currentCC: string;
   onToggle: (projeto: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
 
-  const filtered = projetos.filter((p) =>
-    !q ? true : p.toLowerCase().includes(q.toLowerCase()),
-  );
+  const filtered = projetos.filter((p) => {
+    const owner = projetoToCC.get(p);
+    if (owner && owner !== currentCC) return false;
+    return !q ? true : p.toLowerCase().includes(q.toLowerCase());
+  });
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
