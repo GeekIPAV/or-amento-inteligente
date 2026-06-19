@@ -453,20 +453,31 @@ function OrcamentoPage() {
   return (
     <div className="space-y-4 p-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Orçamento</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {linhas.length} linhas
-          {versaoVisivelObj && (
-            <>
-              {" · "}
-              {versaoSel && versaoSel !== versaoAtiva?.id ? "A ver" : "Ativa"}:{" "}
-              <span className="font-medium text-foreground">
-                {versaoVisivelObj.nome}
-              </span>
-            </>
-          )}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Orçamento</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {linhas.length} linhas
+            {versaoVisivelObj && (
+              <>
+                {" · "}
+                {versaoSel && versaoSel !== versaoAtiva?.id ? "A ver" : "Ativa"}:{" "}
+                <span className="font-medium text-foreground">
+                  {versaoVisivelObj.nome}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <SummaryCard label="Receitas" value={fmtEur(summary.receitas)} tone="receita" />
+          <SummaryCard label="Despesas" value={fmtEur(summary.despesas)} tone="despesa" />
+          <SummaryCard
+            label="Saldo"
+            value={fmtEur(summary.saldo)}
+            tone={summary.saldo >= 0 ? "receita" : "despesa"}
+          />
+        </div>
       </div>
 
       {/* Toolbar */}
