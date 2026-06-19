@@ -356,7 +356,7 @@ function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Orçamentado vs Realizado por mês</CardTitle>
-          <CardDescription>Clica numa barra para ver os detalhes · ano {ano}</CardDescription>
+          <CardDescription>Clica numa barra para ver os detalhes · {descricaoPeriodo}</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="ambos">
