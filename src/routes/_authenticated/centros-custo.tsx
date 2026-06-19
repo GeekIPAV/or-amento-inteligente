@@ -96,16 +96,19 @@ function CentrosCustoPage() {
   }, [sel, original]);
 
   const ccList = ccs ?? [];
-  const ccToProjeto = useMemo(() => {
-    const m = new Map<string, string>();
+  const ccProjetos = useMemo(() => {
+    const m = new Map<string, Set<string>>();
     for (const [p, list] of Object.entries(sel)) {
-      for (const c of list) m.set(c, p);
+      for (const c of list) {
+        if (!m.has(c)) m.set(c, new Set());
+        m.get(c)!.add(p);
+      }
     }
     return m;
   }, [sel]);
 
   const totalCC = ccList.length;
-  const ccAtribuidos = ccToProjeto.size;
+  const ccAtribuidos = ccProjetos.size;
   const ccSemProjeto = totalCC - ccAtribuidos;
 
   const filtered = (projetos ?? []).filter((p) =>
@@ -119,15 +122,13 @@ function CentrosCustoPage() {
 
   const toggleCC = (projeto: string, cc: string) => {
     setSel((prev) => {
-      const next = { ...prev };
-      for (const k of Object.keys(next)) {
-        if (k !== projeto) next[k] = next[k].filter((c) => c !== cc);
-      }
-      const cur = next[projeto] ?? [];
-      next[projeto] = cur.includes(cc)
-        ? cur.filter((c) => c !== cc)
-        : [...cur, cc];
-      return next;
+      const cur = prev[projeto] ?? [];
+      return {
+        ...prev,
+        [projeto]: cur.includes(cc)
+          ? cur.filter((c) => c !== cc)
+          : [...cur, cc],
+      };
     });
   };
 
