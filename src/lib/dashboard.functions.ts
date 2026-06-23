@@ -1,6 +1,27 @@
+/**
+ * SIGN CONVENTION (SNC → App)
+ *
+ * Raw data has separate `debito` and `credito` columns.
+ * Derived values follow this convention:
+ *
+ * Revenue (conta 7xx): receita = credito - debito  → POSITIVE
+ * Expense (conta 6xx): despesa = debito - credito  → POSITIVE
+ *   (represents magnitude of cost, always stored positive)
+ *
+ * Net calculations:
+ *   resultado = receita - despesa
+ *   (positive = surplus, negative = deficit)
+ *
+ * Budget comparison:
+ *   desvio_receita = realizado - orcado  (+ = over-performing)
+ *   desvio_despesa = orcado - realizado  (+ = under-spending)
+ *   exec_receita = realizado / orcado
+ *   exec_despesa = realizado / orcado  (alert if > 1.0)
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
 
 type ProjRpc = { projeto: string; nome_projeto?: string; receita: number; despesa: number };
 type RubRpc = { rubrica: string; receita: number; despesa: number };
