@@ -63,9 +63,29 @@ function ResumoProjetosGrid({
       filterFn: textFilterFn,
       meta: { filterType: "text" },
       size: 240,
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue() as string}</span>
-      ),
+      sortingFn: (rowA, rowB, columnId) => {
+        const a = String(rowA.getValue(columnId) ?? "");
+        const b = String(rowB.getValue(columnId) ?? "");
+        const aU = a === SEM_PROJETO;
+        const bU = b === SEM_PROJETO;
+        if (aU && !bU) return 1;
+        if (!aU && bU) return -1;
+        return a.localeCompare(b, "pt");
+      },
+      cell: ({ getValue }) => {
+        const v = getValue() as string;
+        const isPorAtribuir = v === SEM_PROJETO;
+        return (
+          <span className={cn("font-medium", isPorAtribuir && "text-amber-600 dark:text-amber-400")}>
+            {isPorAtribuir ? (
+              <span className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {v}
+              </span>
+            ) : v}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "orcado",
@@ -129,6 +149,11 @@ function ResumoProjetosGrid({
       emptyMessage={`Sem dados para ${ano}.`}
       maxHeight="60vh"
       onRowClick={onRowClick}
+      getRowClassName={(p) =>
+        (p.nome ?? p.projeto) === SEM_PROJETO
+          ? "bg-amber-50/50 dark:bg-amber-950/20 border-l-2 border-l-amber-400"
+          : undefined
+      }
     />
   );
 }
