@@ -409,13 +409,19 @@ function OrcamentoPage() {
             tone={row.original.tipo === "RECEITA" ? "receita" : "despesa"}
           />
         ),
-        aggregatedCell: ({ getValue, row }) => {
-          // Determine tone: if all subrows are same tipo, color accordingly; else use sign
+        aggregatedCell: ({ row }) => {
           const subs = row.getLeafRows();
-          const allReceita = subs.every((r) => (r.original as Linha).tipo === "RECEITA");
-          const allDespesa = subs.every((r) => (r.original as Linha).tipo === "DESPESA");
-          const n = Number(getValue() ?? 0);
-          const tone = allReceita ? "receita" : allDespesa ? "despesa" : n >= 0 ? "receita" : "despesa";
+          let rec = 0, desp = 0;
+          for (const r of subs) {
+            const l = r.original as Linha;
+            const v = Number(l.valor) || 0;
+            if (l.tipo === "RECEITA") rec += v;
+            else desp += v;
+          }
+          const allReceita = desp === 0 && rec > 0;
+          const allDespesa = rec === 0 && desp > 0;
+          const display = allDespesa ? -desp : allReceita ? rec : rec - desp;
+          const tone = allReceita ? "receita" : allDespesa ? "despesa" : display >= 0 ? "receita" : "despesa";
           return (
             <div
               className={cn(
@@ -428,7 +434,7 @@ function OrcamentoPage() {
               {new Intl.NumberFormat("pt-PT", {
                 style: "currency",
                 currency: "EUR",
-              }).format(n)}
+              }).format(display)}
             </div>
           );
         },
@@ -546,7 +552,7 @@ function OrcamentoPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <SummaryCard label="Receitas" value={fmtEur(summary.receitas)} tone="receita" />
-          <SummaryCard label="Despesas" value={fmtEur(summary.despesas)} tone="despesa" />
+          <SummaryCard label="Despesas" value={fmtEur(-Math.abs(summary.despesas))} tone="despesa" />
           <SummaryCard
             label="Saldo"
             value={fmtEur(summary.saldo)}
@@ -1279,17 +1285,18 @@ function EditableNumberCell({
     if (!editing) setDraft(String(value ?? ""));
   }, [value, editing]);
 
+  const displayValue = tone === "despesa" ? -Math.abs(value ?? 0) : (value ?? 0);
   const formatted = currency
     ? new Intl.NumberFormat("pt-PT", {
         style: "currency",
         currency: "EUR",
-      }).format(value ?? 0)
+      }).format(displayValue)
     : decimals > 0
       ? new Intl.NumberFormat("pt-PT", {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
-        }).format(value ?? 0)
-      : String(value ?? "");
+        }).format(displayValue)
+      : String(displayValue ?? "");
 
   if (!editing) {
     return (

@@ -273,15 +273,17 @@ export function CurrencyCell({
   tone?: "receita" | "despesa" | "auto" | "neutral";
   showZeroAsDash?: boolean;
 }) {
-  const n = Number(value) || 0;
-  if (showZeroAsDash && n === 0)
+  const raw = Number(value) || 0;
+  if (showZeroAsDash && raw === 0)
     return <span className="text-muted-foreground">—</span>;
   const t =
     tone === "auto"
-      ? n >= 0
+      ? raw >= 0
         ? "receita"
         : "despesa"
       : tone;
+  // Despesas display as negative magnitude regardless of how they were passed in
+  const n = t === "despesa" ? -Math.abs(raw) : raw;
   return (
     <div
       className={cn(
@@ -519,13 +521,38 @@ export function DataGrid<T>({
             }}
           >
             <TableHeader className="sticky top-0 z-10 bg-muted/50 backdrop-blur">
-              {table.getHeaderGroups().map((hg) => (
+              {table.getHeaderGroups().map((hg) => {
+                return (
                 <TableRow key={hg.id} className="hover:bg-transparent">
                   {hg.headers.map((h) => {
                     const isDragOver = dragOverCol === h.column.id;
+                    const isLeaf = h.subHeaders.length === 0;
+                    if (h.isPlaceholder) {
+                      return (
+                        <TableHead
+                          key={h.id}
+                          colSpan={h.colSpan}
+                          style={{ width: h.getSize() }}
+                          className="h-8 px-2 py-1"
+                        />
+                      );
+                    }
+                    if (!isLeaf) {
+                      // Group header spanning multiple leaf columns
+                      return (
+                        <TableHead
+                          key={h.id}
+                          colSpan={h.colSpan}
+                          className="h-8 select-none whitespace-nowrap border-b px-2 py-1 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                        >
+                          {flexRender(h.column.columnDef.header, h.getContext())}
+                        </TableHead>
+                      );
+                    }
                     return (
                       <TableHead
                         key={h.id}
+                        colSpan={h.colSpan}
                         style={{ width: h.getSize() }}
                         onDragOver={(e) => {
                           if (!dragColRef.current) return;
@@ -573,12 +600,7 @@ export function DataGrid<T>({
                             <GripVertical className="h-3.5 w-3.5" />
                           </span>
                           <div className="min-w-0 flex-1 overflow-hidden">
-                            {h.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  h.column.columnDef.header,
-                                  h.getContext(),
-                                )}
+                            {flexRender(h.column.columnDef.header, h.getContext())}
                           </div>
                         </div>
                         {h.column.getCanResize() && (
@@ -604,9 +626,10 @@ export function DataGrid<T>({
                     );
                   })}
                 </TableRow>
-              ))}
+                );
+              })}
               <TableRow className="hover:bg-transparent">
-                {table.getHeaderGroups()[0]?.headers.map((h) => (
+                {table.getHeaderGroups().at(-1)?.headers.map((h) => (
                   <TableHead
                     key={`f-${h.id}`}
                     style={{ width: h.getSize() }}
