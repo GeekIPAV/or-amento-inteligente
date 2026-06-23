@@ -1,23 +1,78 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, FileSpreadsheet, Upload, LogOut, Wallet, Table as TableIcon, FolderKanban, ListTree, Sparkles, Users, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  LayoutDashboard,
+  FileSpreadsheet,
+  Upload,
+  LogOut,
+  Wallet,
+  Table as TableIcon,
+  FolderKanban,
+  ListTree,
+  Sparkles,
+  Users,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Landmark,
+  Waves,
+  FileText,
+  BellDot,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { verificarAdmin } from "@/lib/admin-users.functions";
+import { contarAlertas } from "@/lib/alertas.functions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
-  { to: "/orcamento", label: "Orçamento", icon: FileSpreadsheet, adminOnly: false },
-  { to: "/movimentos", label: "Movimentos", icon: TableIcon, adminOnly: false },
-  { to: "/centros-custo", label: "Centros de Custo", icon: FolderKanban, adminOnly: false },
-  { to: "/contas-rubricas", label: "Contas / Rubricas", icon: ListTree, adminOnly: false },
-  { to: "/prompts", label: "Prompts", icon: Sparkles, adminOnly: false },
-  { to: "/admin", label: "Utilizadores", icon: Users, adminOnly: true },
-] as const;
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  adminOnly?: boolean;
+};
+
+type NavGroup = { label: string | null; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
+  {
+    label: null,
+    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "FINANCEIRO",
+    items: [
+      { to: "/orcamento", label: "Orçamento", icon: FileSpreadsheet },
+      { to: "/movimentos", label: "Movimentos", icon: TableIcon },
+      { to: "/importar-extratos", label: "Importar extratos", icon: Upload },
+    ],
+  },
+  {
+    label: "FINANCIAMENTO",
+    items: [
+      { to: "/financiadores", label: "Financiadores", icon: Landmark },
+      { to: "/tesouraria", label: "Tesouraria", icon: Waves },
+      { to: "/relatorio", label: "Relatório", icon: FileText },
+      { to: "/alertas", label: "Alertas", icon: BellDot },
+    ],
+  },
+  {
+    label: "ESTRUTURA",
+    items: [
+      { to: "/centros-custo", label: "Centros de Custo", icon: FolderKanban },
+      { to: "/contas-rubricas", label: "Contas / Rubricas", icon: ListTree },
+    ],
+  },
+  {
+    label: "FERRAMENTAS",
+    items: [
+      { to: "/prompts", label: "Prompts", icon: Sparkles },
+      { to: "/admin", label: "Utilizadores", icon: Users, adminOnly: true },
+    ],
+  },
+];
 
 const STORAGE_KEY = "appshell:collapsed";
 
@@ -25,12 +80,21 @@ export function AppShell() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const verificarAdminFn = useServerFn(verificarAdmin);
+  const contarAlertasFn = useServerFn(contarAlertas);
   const { data: adminInfo } = useQuery({
     queryKey: ["is-admin"],
     queryFn: () => verificarAdminFn(),
     staleTime: 5 * 60_000,
   });
   const isAdmin = !!adminInfo?.isAdmin;
+
+  const { data: alertaInfo } = useQuery({
+    queryKey: ["alertas-count"],
+    queryFn: () => contarAlertasFn() as Promise<{ count: number }>,
+    staleTime: 2 * 60_000,
+    refetchInterval: 2 * 60_000,
+  });
+  const alertaCount = alertaInfo?.count ?? 0;
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -42,7 +106,6 @@ export function AppShell() {
     window.localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
 
-  // Auto-collapse on small screens
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 768px)");
@@ -68,10 +131,12 @@ export function AppShell() {
             collapsed ? "w-16" : "w-64",
           )}
         >
-          <div className={cn(
-            "py-5 border-b border-border flex items-center gap-2",
-            collapsed ? "px-3 justify-center" : "px-6",
-          )}>
+          <div
+            className={cn(
+              "py-5 border-b border-border flex items-center gap-2",
+              collapsed ? "px-3 justify-center" : "px-6",
+            )}
+          >
             <div className="size-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center shrink-0">
               <Wallet className="size-5" />
             </div>
@@ -96,36 +161,71 @@ export function AppShell() {
             </Button>
           </div>
 
-          <nav className="flex-1 p-3 space-y-1">
-            {nav.filter((i) => !i.adminOnly || isAdmin).map((item) => {
-              const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
-              const Icon = item.icon;
-              const link = (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md text-sm transition-colors",
-                    collapsed ? "justify-center px-2 py-2" : "px-3 py-2",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+            {navGroups.map((group, gi) => {
+              const items = group.items.filter((i) => !i.adminOnly || isAdmin);
+              if (items.length === 0) return null;
+              return (
+                <Fragment key={gi}>
+                  {group.label && !collapsed && (
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-3 pt-4 pb-1">
+                      {group.label}
+                    </div>
                   )}
-                >
-                  <Icon className="size-4 shrink-0" />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                </Link>
-              );
+                  {group.label && collapsed && gi > 0 && (
+                    <div className="my-2 mx-2 border-t border-border/60" />
+                  )}
+                  {items.map((item) => {
+                    const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+                    const Icon = item.icon;
+                    const isAlerts = item.to === "/alertas";
+                    const showBadge = isAlerts && alertaCount > 0;
+                    const link = (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className={cn(
+                          "relative flex items-center gap-3 rounded-md text-sm transition-colors",
+                          collapsed ? "justify-center px-2 py-2" : "px-3 py-2",
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        )}
+                      >
+                        <span className="relative">
+                          <Icon className="size-4 shrink-0" />
+                          {showBadge && collapsed && (
+                            <span className="absolute -top-1 -right-1 size-2 rounded-full bg-red-500 ring-2 ring-card" />
+                          )}
+                        </span>
+                        {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+                        {!collapsed && showBadge && (
+                          <span
+                            className={cn(
+                              "ml-auto inline-flex items-center justify-center rounded-full px-1.5 min-w-[18px] h-[18px] text-[10px] font-semibold tabular-nums",
+                              active
+                                ? "bg-primary-foreground/20 text-primary-foreground"
+                                : "bg-red-500 text-white",
+                            )}
+                          >
+                            {alertaCount > 99 ? "99+" : alertaCount}
+                          </span>
+                        )}
+                      </Link>
+                    );
 
-              if (collapsed) {
-                return (
-                  <Tooltip key={item.to}>
-                    <TooltipTrigger asChild>{link}</TooltipTrigger>
-                    <TooltipContent side="right">{item.label}</TooltipContent>
-                  </Tooltip>
-                );
-              }
-              return link;
+                    if (collapsed) {
+                      return (
+                        <Tooltip key={item.to}>
+                          <TooltipTrigger asChild>{link}</TooltipTrigger>
+                          <TooltipContent side="right">{item.label}</TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+                    return link;
+                  })}
+                </Fragment>
+              );
             })}
           </nav>
 

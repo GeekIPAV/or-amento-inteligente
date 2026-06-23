@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      alertas_financeiros: {
+        Row: {
+          chave: string | null
+          created_at: string
+          dados: Json
+          descricao: string | null
+          id: string
+          lido: boolean
+          link_rota: string | null
+          resolvido: boolean
+          severidade: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          chave?: string | null
+          created_at?: string
+          dados?: Json
+          descricao?: string | null
+          id?: string
+          lido?: boolean
+          link_rota?: string | null
+          resolvido?: boolean
+          severidade?: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          chave?: string | null
+          created_at?: string
+          dados?: Json
+          descricao?: string | null
+          id?: string
+          lido?: boolean
+          link_rota?: string | null
+          resolvido?: boolean
+          severidade?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       centro_custo_projetos: {
         Row: {
           centro_custo: string
@@ -145,6 +190,101 @@ export type Database = {
         }
         Relationships: []
       }
+      financiadores: {
+        Row: {
+          contacto_email: string | null
+          contacto_nome: string | null
+          created_at: string
+          id: string
+          nome: string
+          notas: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          contacto_email?: string | null
+          contacto_nome?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          notas?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          contacto_email?: string | null
+          contacto_nome?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          notas?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financiamentos: {
+        Row: {
+          ano: number
+          created_at: string
+          data_aprovacao: string | null
+          data_pagamento_real: string | null
+          data_prevista_pagamento: string | null
+          descricao: string
+          estado: string
+          financiador_id: string
+          id: string
+          notas: string | null
+          percentagem_projeto: number | null
+          projeto: string | null
+          updated_at: string
+          valor_aprovado: number
+          valor_recebido: number
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          data_aprovacao?: string | null
+          data_pagamento_real?: string | null
+          data_prevista_pagamento?: string | null
+          descricao: string
+          estado?: string
+          financiador_id: string
+          id?: string
+          notas?: string | null
+          percentagem_projeto?: number | null
+          projeto?: string | null
+          updated_at?: string
+          valor_aprovado?: number
+          valor_recebido?: number
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          data_aprovacao?: string | null
+          data_pagamento_real?: string | null
+          data_prevista_pagamento?: string | null
+          descricao?: string
+          estado?: string
+          financiador_id?: string
+          id?: string
+          notas?: string | null
+          percentagem_projeto?: number | null
+          projeto?: string | null
+          updated_at?: string
+          valor_aprovado?: number
+          valor_recebido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financiamentos_financiador_id_fkey"
+            columns: ["financiador_id"]
+            isOneToOne: false
+            referencedRelation: "financiadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orcamento_versoes: {
         Row: {
           ano: number
@@ -227,6 +367,95 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      previsoes_tesouraria: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          data: string
+          descricao: string
+          estado: string
+          financiamento_id: string | null
+          id: string
+          notas: string | null
+          projeto: string | null
+          recorrencia_meses: number | null
+          recorrente: boolean
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          data: string
+          descricao: string
+          estado?: string
+          financiamento_id?: string | null
+          id?: string
+          notas?: string | null
+          projeto?: string | null
+          recorrencia_meses?: number | null
+          recorrente?: boolean
+          tipo: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          data?: string
+          descricao?: string
+          estado?: string
+          financiamento_id?: string | null
+          id?: string
+          notas?: string | null
+          projeto?: string | null
+          recorrencia_meses?: number | null
+          recorrente?: boolean
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "previsoes_tesouraria_financiamento_id_fkey"
+            columns: ["financiamento_id"]
+            isOneToOne: false
+            referencedRelation: "financiamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      relatorio_notas: {
+        Row: {
+          ano: number
+          created_at: string
+          id: string
+          nota: string
+          projeto: string
+          rubrica: string
+          updated_at: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          id?: string
+          nota?: string
+          projeto?: string
+          rubrica?: string
+          updated_at?: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          id?: string
+          nota?: string
+          projeto?: string
+          rubrica?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       transacoes_extrato: {
         Row: {
