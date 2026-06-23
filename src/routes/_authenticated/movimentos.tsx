@@ -205,7 +205,7 @@ function MovimentosPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <SummaryCard label="Receitas" value={fmtEur(summary.receita)} tone="receita" />
-          <SummaryCard label="Despesas" value={fmtEur(summary.despesa)} tone="despesa" />
+          <SummaryCard label="Despesas" value={fmtEur(-Math.abs(summary.despesa))} tone="despesa" />
           <SummaryCard
             label="Resultado"
             value={fmtEur(summary.resultado)}
