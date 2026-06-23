@@ -8,13 +8,13 @@ import {
 } from "recharts";
 
 import { z } from "zod";
-import { resumoDashboard, anosDisponiveis, mesesDisponiveis } from "@/lib/dashboard.functions";
+import { resumoDashboard, anosDisponiveis, mesesDisponiveis, SEM_PROJETO, SEM_RUBRICA, SENTINEL_SEM_PROJETO, SENTINEL_SEM_RUBRICA } from "@/lib/dashboard.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { currency, percent, MESES_CURTOS, MESES_LONGOS } from "@/lib/format";
-import { TrendingUp, TrendingDown, Wallet, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Target, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -63,9 +63,29 @@ function ResumoProjetosGrid({
       filterFn: textFilterFn,
       meta: { filterType: "text" },
       size: 240,
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue() as string}</span>
-      ),
+      sortingFn: (rowA, rowB, columnId) => {
+        const a = String(rowA.getValue(columnId) ?? "");
+        const b = String(rowB.getValue(columnId) ?? "");
+        const aU = a === SEM_PROJETO;
+        const bU = b === SEM_PROJETO;
+        if (aU && !bU) return 1;
+        if (!aU && bU) return -1;
+        return a.localeCompare(b, "pt");
+      },
+      cell: ({ getValue }) => {
+        const v = getValue() as string;
+        const isPorAtribuir = v === SEM_PROJETO;
+        return (
+          <span className={cn("font-medium", isPorAtribuir && "text-amber-600 dark:text-amber-400")}>
+            {isPorAtribuir ? (
+              <span className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {v}
+              </span>
+            ) : v}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "orcado",
@@ -129,6 +149,11 @@ function ResumoProjetosGrid({
       emptyMessage={`Sem dados para ${ano}.`}
       maxHeight="60vh"
       onRowClick={onRowClick}
+      getRowClassName={(p) =>
+        (p.nome ?? p.projeto) === SEM_PROJETO
+          ? "bg-amber-50/50 dark:bg-amber-950/20 border-l-2 border-l-amber-400"
+          : undefined
+      }
     />
   );
 }
@@ -155,7 +180,29 @@ function ResumoRubricasGrid({
       filterFn: textFilterFn,
       meta: { filterType: "text" },
       size: 240,
-      cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
+      sortingFn: (rowA, rowB, columnId) => {
+        const a = String(rowA.getValue(columnId) ?? "");
+        const b = String(rowB.getValue(columnId) ?? "");
+        const aU = a === SEM_RUBRICA;
+        const bU = b === SEM_RUBRICA;
+        if (aU && !bU) return 1;
+        if (!aU && bU) return -1;
+        return a.localeCompare(b, "pt");
+      },
+      cell: ({ getValue }) => {
+        const v = getValue() as string;
+        const isPorAtribuir = v === SEM_RUBRICA;
+        return (
+          <span className={cn("font-medium", isPorAtribuir && "text-amber-600 dark:text-amber-400")}>
+            {isPorAtribuir ? (
+              <span className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {v}
+              </span>
+            ) : v}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "orcado",
@@ -213,6 +260,11 @@ function ResumoRubricasGrid({
       emptyMessage={`Sem rubricas com correspondência para ${ano}. Atribui contas às rubricas em Rubricas / Contas.`}
       maxHeight="60vh"
       onRowClick={onRowClick}
+      getRowClassName={(r) =>
+        r.rubrica === SEM_RUBRICA
+          ? "bg-amber-50/50 dark:bg-amber-950/20 border-l-2 border-l-amber-400"
+          : undefined
+      }
     />
 
   );
@@ -370,24 +422,26 @@ function Dashboard() {
     });
   };
   const openProjeto = (projeto: string, nome: string, tipo?: "RECEITA" | "DESPESA") => {
+    const isSem = projeto === SEM_PROJETO || nome === SEM_PROJETO;
     setPeek({
-      titulo: nome,
+      titulo: isSem ? "⚠ Movimentos sem projeto atribuído" : nome,
       subtitulo: `${descricaoPeriodo}${tipo ? ` · ${tipo === "RECEITA" ? "Receitas" : "Despesas"}` : ""}`,
       anos: anosAlvo,
       mesIni: (data?.intervalo as any)?.mesIni ?? 1,
       mesFim: (data?.intervalo as any)?.mesFim ?? 12,
-      projeto,
+      projeto: isSem ? SENTINEL_SEM_PROJETO : projeto,
       tipo: tipo ?? null,
     });
   };
   const openRubrica = (rubrica: string) => {
+    const isSem = rubrica === SEM_RUBRICA;
     setPeek({
-      titulo: rubrica,
+      titulo: isSem ? "⚠ Movimentos sem rúbrica atribuída" : rubrica,
       subtitulo: `Rubrica · ${descricaoPeriodo}`,
       anos: anosAlvo,
       mesIni: (data?.intervalo as any)?.mesIni ?? 1,
       mesFim: (data?.intervalo as any)?.mesFim ?? 12,
-      rubrica,
+      rubrica: isSem ? SENTINEL_SEM_RUBRICA : rubrica,
     });
   };
 

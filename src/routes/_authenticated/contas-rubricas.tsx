@@ -110,6 +110,10 @@ function ContasRubricasPage() {
   const totalContas = contasList.length;
   const contasAtribuidas = contaToRubrica.size;
   const contasSemRubrica = totalContas - contasAtribuidas;
+  const movsSemRubrica = contasList.reduce(
+    (a, c) => a + (contaToRubrica.get(c.conta) ? 0 : (c.linhas ?? 0)),
+    0,
+  );
 
   const filtered = (rubricas ?? []).filter((r) =>
     r.rubrica.toLowerCase().includes(filter.toLowerCase()),
@@ -178,8 +182,12 @@ function ContasRubricasPage() {
           <SummaryCard label="Rubricas" value={String((rubricas ?? []).length)} tone="receita" />
           <SummaryCard label="Contas atribuídas" value={String(contasAtribuidas)} tone="receita" />
           <SummaryCard label="Contas sem rubrica" value={String(contasSemRubrica)} tone="despesa" />
+          {movsSemRubrica > 0 && (
+            <SummaryCard label="⚠ Mov. sem rubrica" value={`${new Intl.NumberFormat("pt-PT").format(movsSemRubrica)} mov.`} tone="despesa" />
+          )}
         </div>
       </div>
+
 
       <div className="flex flex-wrap items-center gap-2">
         <Input

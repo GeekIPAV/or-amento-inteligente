@@ -317,6 +317,7 @@ export interface DataGridProps<T> {
   maxHeight?: string;
   emptyMessage?: string;
   onRowClick?: (row: T) => void;
+  getRowClassName?: (row: T) => string | undefined;
 }
 
 
@@ -336,6 +337,7 @@ export function DataGrid<T>({
   maxHeight = "72vh",
   emptyMessage = "Sem dados.",
   onRowClick,
+  getRowClassName,
 }: DataGridProps<T>) {
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -652,6 +654,7 @@ export function DataGrid<T>({
                           "h-8 border-b border-border/50",
                           row.getIsGrouped() && "bg-muted/40 font-medium",
                           onRowClick && !row.getIsGrouped() && "cursor-pointer hover:bg-muted/50",
+                          getRowClassName?.(row.original),
                         )}
                         style={{ height: ROW_HEIGHT }}
                         onClick={

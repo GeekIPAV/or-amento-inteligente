@@ -22,6 +22,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const SEM_PROJETO = "⚠ Por atribuir — Projeto";
+export const SEM_RUBRICA = "⚠ Por atribuir — Rúbrica";
+export const SENTINEL_SEM_PROJETO = "__sem_projeto__";
+export const SENTINEL_SEM_RUBRICA = "__sem_rubrica__";
+
 
 type ProjRpc = { projeto: string; nome_projeto?: string; receita: number; despesa: number };
 type RubRpc = { rubrica: string; receita: number; despesa: number };
@@ -208,7 +213,7 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       else despesaOrc += v;
 
       const nomes = nomesByOrcProjeto.get(o.projeto);
-      const targets = nomes && nomes.size > 0 ? Array.from(nomes) : ["(Sem projeto)"];
+      const targets = nomes && nomes.size > 0 ? Array.from(nomes) : [SEM_PROJETO];
       for (const nome of targets) {
         let pe = porProjeto.get(nome);
         if (!pe) {
@@ -219,16 +224,14 @@ export const resumoDashboard = createServerFn({ method: "GET" })
         else pe.orcadoDespesa += v;
       }
 
-      const rub = (o.rubrica ?? "").trim();
-      if (rub) {
-        let re = porRubrica.get(rub);
-        if (!re) {
-          re = { rubrica: rub, orcadoReceita: 0, orcadoDespesa: 0 };
-          porRubrica.set(rub, re);
-        }
-        if (tipo === "RECEITA") re.orcadoReceita += v;
-        else re.orcadoDespesa += v;
+      const rub = (o.rubrica ?? "").trim() || SEM_RUBRICA;
+      let re = porRubrica.get(rub);
+      if (!re) {
+        re = { rubrica: rub, orcadoReceita: 0, orcadoDespesa: 0 };
+        porRubrica.set(rub, re);
       }
+      if (tipo === "RECEITA") re.orcadoReceita += v;
+      else re.orcadoDespesa += v;
     }
 
 
@@ -301,6 +304,45 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       }
     }
 
+    // Movimentos sem centro_custo atribuído → SEM_PROJETO
+    for (const y of anosAlvo) {
+      const meses: string[] = [];
+      for (let mm = mesIni; mm <= mesFim; mm++) {
+        meses.push(`${y}-${String(mm).padStart(2, "0")}`);
+      }
+      const { data: semProjeto } = await context.supabase
+        .from("transacoes_extrato")
+        .select("conta, debito, credito")
+        .in("mes_referencia", meses)
+        .or("centro_custo.is.null,centro_custo.eq.")
+        .or("conta.like.6%,conta.like.7%");
+      let recSem = 0;
+      let despSem = 0;
+      for (const t of (semProjeto ?? []) as any[]) {
+        const conta = String(t.conta ?? "");
+        if (conta.startsWith("7")) recSem += Number(t.credito ?? 0) - Number(t.debito ?? 0);
+        else if (conta.startsWith("6")) despSem += Number(t.debito ?? 0) - Number(t.credito ?? 0);
+      }
+      if (recSem !== 0 || despSem !== 0) {
+        const existing = projMap.get(SEM_PROJETO);
+        if (existing) {
+          existing.realizadoReceita += recSem;
+          existing.realizadoDespesa += despSem;
+        } else {
+          projMap.set(SEM_PROJETO, {
+            projeto: SEM_PROJETO,
+            nome: SEM_PROJETO,
+            orcadoReceita: 0,
+            orcadoDespesa: 0,
+            realizadoReceita: recSem,
+            realizadoDespesa: despSem,
+          });
+        }
+        receitaReal += recSem;
+        despesaReal += despSem;
+      }
+    }
+
 
     // Realizados — por rubrica (intervalo + multi-ano), via match conta→rubrica.
     type RubRow = {
@@ -340,6 +382,51 @@ export const resumoDashboard = createServerFn({ method: "GET" })
         e.realizadoDespesa += Number(r.despesa ?? 0);
       }
     }
+
+    // Movimentos cuja conta não está atribuída a nenhuma rubrica → SEM_RUBRICA
+    {
+      const { data: todasContas } = await context.supabase
+        .from("conta_rubricas")
+        .select("conta");
+      const contasComRubrica = new Set(
+        (todasContas ?? []).map((r: any) => String(r.conta)),
+      );
+      for (const y of anosAlvo) {
+        const meses: string[] = [];
+        for (let mm = mesIni; mm <= mesFim; mm++) {
+          meses.push(`${y}-${String(mm).padStart(2, "0")}`);
+        }
+        const { data: movsSemRub } = await context.supabase
+          .from("transacoes_extrato")
+          .select("conta, debito, credito")
+          .in("mes_referencia", meses)
+          .or("conta.like.6%,conta.like.7%");
+        let recSem = 0;
+        let despSem = 0;
+        for (const t of (movsSemRub ?? []) as any[]) {
+          const conta = String(t.conta ?? "");
+          if (contasComRubrica.has(conta)) continue;
+          if (conta.startsWith("7")) recSem += Number(t.credito ?? 0) - Number(t.debito ?? 0);
+          else if (conta.startsWith("6")) despSem += Number(t.debito ?? 0) - Number(t.credito ?? 0);
+        }
+        if (recSem !== 0 || despSem !== 0) {
+          const existing = rubMap.get(SEM_RUBRICA);
+          if (existing) {
+            existing.realizadoReceita += recSem;
+            existing.realizadoDespesa += despSem;
+          } else {
+            rubMap.set(SEM_RUBRICA, {
+              rubrica: SEM_RUBRICA,
+              orcadoReceita: 0,
+              orcadoDespesa: 0,
+              realizadoReceita: recSem,
+              realizadoDespesa: despSem,
+            });
+          }
+        }
+      }
+    }
+
 
 
     const grafico = Array.from({ length: mesFim - mesIni + 1 }, (_, i) => {
@@ -415,13 +502,25 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
 
     // Se filtrado por rubrica, obter contas associadas
     let contasRubrica: string[] | null = null;
-    if (rubrica) {
+    let rubricaSemAtribuicao = false;
+    if (rubrica === SENTINEL_SEM_RUBRICA) {
+      rubricaSemAtribuicao = true;
+    } else if (rubrica) {
       const { data: cr, error: errCR } = await context.supabase
         .from("conta_rubricas")
         .select("conta")
         .eq("rubrica", rubrica);
       if (errCR) throw new Error(errCR.message);
       contasRubrica = (cr ?? []).map((r: any) => String(r.conta));
+    }
+
+    // Conjunto global de contas atribuídas (necessário para sem-rubrica)
+    let contasAtribuidasSet: Set<string> | null = null;
+    if (rubricaSemAtribuicao) {
+      const { data: todasCR } = await context.supabase
+        .from("conta_rubricas")
+        .select("conta");
+      contasAtribuidasSet = new Set((todasCR ?? []).map((r: any) => String(r.conta)));
     }
 
     // Transações (limitado a 1000 para o peek)
@@ -442,12 +541,17 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
       else q = q.or("conta.like.6%,conta.like.7%");
     }
     if (projeto) {
-      if (projeto === "(Sem projeto)")
+      if (projeto === SENTINEL_SEM_PROJETO || projeto === SEM_PROJETO || projeto === "(Sem projeto)")
         q = q.or("centro_custo.is.null,centro_custo.eq.");
       else q = q.eq("centro_custo", projeto);
     }
-    const { data: txs, error: errT } = await q;
+    const { data: txsRaw, error: errT } = await q;
     if (errT) throw new Error(errT.message);
+
+    // Filtra transações sem rubrica atribuída quando o cenário é "sem rubrica"
+    const txs = rubricaSemAtribuicao && contasAtribuidasSet
+      ? (txsRaw ?? []).filter((t: any) => !contasAtribuidasSet!.has(String(t.conta ?? "")))
+      : txsRaw;
 
     // Versões ativas do orçamento (uma por ano)
     const { data: versoesAtivas } = await context.supabase
@@ -468,9 +572,22 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
         .lte("mes", mesFim)
         .order("ano", { ascending: true })
         .order("mes", { ascending: true });
-      if (projeto) oq = oq.eq("projeto", projeto);
+      if (projeto) {
+        if (projeto === SENTINEL_SEM_PROJETO || projeto === SEM_PROJETO) {
+          // Linhas de orçamento cujo projeto não tem mapeamento → não filtramos por aqui
+          // (filtragem client-side abaixo)
+        } else {
+          oq = oq.eq("projeto", projeto);
+        }
+      }
       if (tipo) oq = oq.eq("tipo", tipo);
-      if (rubrica) oq = oq.eq("rubrica", rubrica);
+      if (rubrica) {
+        if (rubrica === SENTINEL_SEM_RUBRICA || rubrica === SEM_RUBRICA) {
+          oq = oq.or("rubrica.is.null,rubrica.eq.");
+        } else {
+          oq = oq.eq("rubrica", rubrica);
+        }
+      }
       const { data: o, error: errO } = await oq;
       if (errO) throw new Error(errO.message);
       orcRows = o ?? [];
@@ -484,10 +601,20 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
       (mapas ?? []).map((m: any) => [m.centro_custo, m.nome_projeto]),
     );
 
+    // Para SEM_PROJETO: filtra linhas de orçamento cujo `projeto` não tem mapping
+    if (projeto === SENTINEL_SEM_PROJETO || projeto === SEM_PROJETO) {
+      const projetosOrcMapeados = new Set<string>();
+      const { data: ccp } = await context.supabase
+        .from("centro_custo_projetos")
+        .select("nome_projeto");
+      (ccp ?? []).forEach((r: any) => projetosOrcMapeados.add(String(r.nome_projeto)));
+      orcRows = orcRows.filter((o: any) => !projetosOrcMapeados.has(String(o.projeto ?? "")));
+    }
+
     return {
       transacoes: (txs ?? []).map((t: any) => ({
         ...t,
-        projeto_nome: nomeByCC.get(String(t.centro_custo ?? "")) ?? t.centro_custo ?? "(Sem projeto)",
+        projeto_nome: nomeByCC.get(String(t.centro_custo ?? "")) ?? t.centro_custo ?? SEM_PROJETO,
       })),
       orcamento: orcRows.map((o: any) => ({
         ...o,

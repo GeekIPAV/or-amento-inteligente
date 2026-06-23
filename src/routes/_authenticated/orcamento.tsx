@@ -64,6 +64,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -485,6 +486,14 @@ function OrcamentoPage() {
     }
     return { receitas, despesas, saldo: receitas - despesas };
   }, [filteredFlatRows]);
+  const semProjeto = useMemo(
+    () => linhas.filter((l) => !l.projeto || l.projeto.trim() === "").length,
+    [linhas],
+  );
+  const semRubrica = useMemo(
+    () => linhas.filter((l) => !l.rubrica || l.rubrica.trim() === "").length,
+    [linhas],
+  );
   const fmtEur = (n: number) =>
     new Intl.NumberFormat("pt-PT", {
       style: "currency",
@@ -543,8 +552,15 @@ function OrcamentoPage() {
             value={fmtEur(summary.saldo)}
             tone={summary.saldo >= 0 ? "receita" : "despesa"}
           />
+          {semProjeto > 0 && (
+            <SummaryCard label="⚠ Sem projeto" value={`${semProjeto} linha${semProjeto === 1 ? "" : "s"}`} tone="despesa" />
+          )}
+          {semRubrica > 0 && (
+            <SummaryCard label="⚠ Sem rubrica" value={`${semRubrica} linha${semRubrica === 1 ? "" : "s"}`} tone="despesa" />
+          )}
         </div>
       </div>
+
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
@@ -1380,12 +1396,24 @@ function textColumn(
     header: sortHeader(label),
     filterFn: textFilterFn,
     meta: { filterType: "text" as const },
-    cell: ({ row }) => (
-      <EditableTextCell
-        value={(row.original as any)[key] ?? null}
-        onSave={(v) => save(row.original, { [key]: v } as Partial<Linha>)}
-      />
-    ),
+    cell: ({ row }) => {
+      const v = (row.original as any)[key];
+      const isEmpty = (key === "projeto" || key === "rubrica") && (!v || String(v).trim() === "");
+      return (
+        <div className="flex items-center gap-1.5">
+          {isEmpty && (
+            <AlertTriangle
+              className="h-3.5 w-3.5 shrink-0 text-amber-500"
+              aria-label={`Sem ${key}`}
+            />
+          )}
+          <EditableTextCell
+            value={v ?? null}
+            onSave={(nv) => save(row.original, { [key]: nv } as Partial<Linha>)}
+          />
+        </div>
+      );
+    },
   };
 }
 
