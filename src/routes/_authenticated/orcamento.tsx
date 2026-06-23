@@ -546,7 +546,7 @@ function OrcamentoPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <SummaryCard label="Receitas" value={fmtEur(summary.receitas)} tone="receita" />
-          <SummaryCard label="Despesas" value={fmtEur(summary.despesas)} tone="despesa" />
+          <SummaryCard label="Despesas" value={fmtEur(-Math.abs(summary.despesas))} tone="despesa" />
           <SummaryCard
             label="Saldo"
             value={fmtEur(summary.saldo)}
