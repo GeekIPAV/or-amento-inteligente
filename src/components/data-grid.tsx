@@ -519,13 +519,39 @@ export function DataGrid<T>({
             }}
           >
             <TableHeader className="sticky top-0 z-10 bg-muted/50 backdrop-blur">
-              {table.getHeaderGroups().map((hg) => (
+              {table.getHeaderGroups().map((hg, hgIdx) => {
+                const isLeafRow = hgIdx === table.getHeaderGroups().length - 1;
+                return (
                 <TableRow key={hg.id} className="hover:bg-transparent">
                   {hg.headers.map((h) => {
                     const isDragOver = dragOverCol === h.column.id;
+                    const isLeaf = h.subHeaders.length === 0;
+                    if (h.isPlaceholder) {
+                      return (
+                        <TableHead
+                          key={h.id}
+                          colSpan={h.colSpan}
+                          style={{ width: h.getSize() }}
+                          className="h-8 px-2 py-1"
+                        />
+                      );
+                    }
+                    if (!isLeaf) {
+                      // Group header spanning multiple leaf columns
+                      return (
+                        <TableHead
+                          key={h.id}
+                          colSpan={h.colSpan}
+                          className="h-8 select-none whitespace-nowrap border-b px-2 py-1 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                        >
+                          {flexRender(h.column.columnDef.header, h.getContext())}
+                        </TableHead>
+                      );
+                    }
                     return (
                       <TableHead
                         key={h.id}
+                        colSpan={h.colSpan}
                         style={{ width: h.getSize() }}
                         onDragOver={(e) => {
                           if (!dragColRef.current) return;
@@ -573,12 +599,7 @@ export function DataGrid<T>({
                             <GripVertical className="h-3.5 w-3.5" />
                           </span>
                           <div className="min-w-0 flex-1 overflow-hidden">
-                            {h.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  h.column.columnDef.header,
-                                  h.getContext(),
-                                )}
+                            {flexRender(h.column.columnDef.header, h.getContext())}
                           </div>
                         </div>
                         {h.column.getCanResize() && (
@@ -604,7 +625,8 @@ export function DataGrid<T>({
                     );
                   })}
                 </TableRow>
-              ))}
+                );
+              })}
               <TableRow className="hover:bg-transparent">
                 {table.getHeaderGroups().at(-1)?.headers.map((h) => (
                   <TableHead
