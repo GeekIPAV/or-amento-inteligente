@@ -663,8 +663,10 @@ function Dashboard() {
                     <BarChart
                       data={rubricas.map((r) => ({
                         rubrica: r.rubrica,
-                        Orçamentado: r.orcado,
-                        Realizado: r.realizado,
+                        "Rec. Orç.": r.orcadoReceita,
+                        "Rec. Real.": r.realizadoReceita,
+                        "Desp. Orç.": r.orcadoDespesa,
+                        "Desp. Real.": r.realizadoDespesa,
                       }))}
                       layout="vertical"
                       margin={{ left: 20, right: 20 }}
@@ -674,8 +676,10 @@ function Dashboard() {
                       <YAxis type="category" dataKey="rubrica" width={200} />
                       <Tooltip formatter={(v: number) => currency.format(v)} />
                       <Legend />
-                      <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" />
-                      <Bar dataKey="Realizado" fill="hsl(160 70% 45%)" />
+                      <Bar dataKey="Rec. Orç." fill="hsl(160 50% 70%)" />
+                      <Bar dataKey="Rec. Real." fill="hsl(160 60% 40%)" />
+                      <Bar dataKey="Desp. Orç." fill="hsl(0 50% 75%)" />
+                      <Bar dataKey="Desp. Real." fill="hsl(0 65% 50%)" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -683,6 +687,7 @@ function Dashboard() {
             </TabsContent>
 
           </Tabs>
+
         </CardContent>
       </Card>
 
