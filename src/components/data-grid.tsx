@@ -317,6 +317,7 @@ export interface DataGridProps<T> {
   maxHeight?: string;
   emptyMessage?: string;
   onRowClick?: (row: T) => void;
+  getRowClassName?: (row: T) => string | undefined;
 }
 
 
