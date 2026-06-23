@@ -78,10 +78,10 @@ export function DashboardPeek({
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
           <Kpi label="Receita realizada" value={currency.format(totReceita)} tone="receita" />
-          <Kpi label="Despesa realizada" value={currency.format(totDespesa)} tone="despesa" />
+          <Kpi label="Despesa realizada" value={currency.format(-Math.abs(totDespesa))} tone="despesa" />
           <Kpi label="Resultado" value={currency.format(resultado)} tone={resultado >= 0 ? "receita" : "despesa"} />
           <Kpi label="Orç. Receita" value={currency.format(orcReceita)} tone="receita" />
-          <Kpi label="Orç. Despesa" value={currency.format(orcDespesa)} tone="despesa" />
+          <Kpi label="Orç. Despesa" value={currency.format(-Math.abs(orcDespesa))} tone="despesa" />
         </div>
 
 
