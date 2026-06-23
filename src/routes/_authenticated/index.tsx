@@ -27,20 +27,39 @@ import {
 type ProjRow = {
   projeto: string;
   nome?: string | null;
-  orcado: number;
-  realizado: number;
-  desvio: number;
-  exec: number;
+  orcadoReceita: number;
+  orcadoDespesa: number;
+  realizadoReceita: number;
+  realizadoDespesa: number;
+  resultado: number;
+  execReceita: number;
+  execDespesa: number;
 };
 
 type RubRow = {
   rubrica: string;
-  orcado: number;
-  realizado: number;
-  desvio: number;
-  exec: number;
+  orcadoReceita: number;
+  orcadoDespesa: number;
+  realizadoReceita: number;
+  realizadoDespesa: number;
+  resultado: number;
+  execReceita: number;
+  execDespesa: number;
 };
 
+
+function execReceitaCell({ row, getValue }: any) {
+  const v = Number(getValue() ?? 0);
+  if (row.original.orcadoReceita === 0) return <span className="text-muted-foreground">—</span>;
+  const cls = v >= 0.9 ? "text-emerald-600" : v >= 0.5 ? "text-amber-600" : "text-rose-600";
+  return <div className={cn("text-right tabular-nums font-medium", cls)}>{percent(v)}</div>;
+}
+function execDespesaCell({ row, getValue }: any) {
+  const v = Number(getValue() ?? 0);
+  if (row.original.orcadoDespesa === 0) return <span className="text-muted-foreground">—</span>;
+  const cls = v <= 1.0 ? "text-emerald-600" : v <= 1.1 ? "text-amber-600" : "text-rose-600";
+  return <div className={cn("text-right tabular-nums font-medium", cls)}>{percent(v)}</div>;
+}
 
 
 function ResumoProjetosGrid({
@@ -68,54 +87,72 @@ function ResumoProjetosGrid({
       ),
     },
     {
-      accessorKey: "orcado",
-      header: sortHeader("Orçamentado"),
+      accessorKey: "orcadoReceita",
+      header: sortHeader("Rec. Orç."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
-      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
     },
     {
-      accessorKey: "realizado",
-      header: sortHeader("Realizado"),
+      accessorKey: "realizadoReceita",
+      header: sortHeader("Rec. Real."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
-      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
     },
     {
-      accessorKey: "desvio",
-      header: sortHeader("Desvio"),
+      accessorKey: "orcadoDespesa",
+      header: sortHeader("Desp. Orç."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => (
-        <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
-      ),
-      aggregatedCell: ({ getValue }) => (
-        <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
-      ),
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
     },
     {
-      accessorKey: "exec",
-      header: sortHeader("Execução"),
+      accessorKey: "realizadoDespesa",
+      header: sortHeader("Desp. Real."),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+    },
+    {
+      accessorKey: "resultado",
+      header: sortHeader("Resultado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+    },
+    {
+      accessorKey: "execReceita",
+      header: sortHeader("Exec. Rec."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
       size: 110,
       enableGrouping: false,
-      cell: ({ row, getValue }) =>
-        row.original.orcado === 0 ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <div className="text-right tabular-nums">
-            {percent(Number(getValue() ?? 0))}
-          </div>
-        ),
+      cell: execReceitaCell,
+    },
+    {
+      accessorKey: "execDespesa",
+      header: sortHeader("Exec. Desp."),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 110,
+      enableGrouping: false,
+      cell: execDespesaCell,
     },
   ];
 
@@ -132,8 +169,6 @@ function ResumoProjetosGrid({
     />
   );
 }
-
-
 
 
 
@@ -160,48 +195,72 @@ function ResumoRubricasGrid({
       cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
     },
     {
-      accessorKey: "orcado",
-      header: sortHeader("Orçamentado"),
+      accessorKey: "orcadoReceita",
+      header: sortHeader("Rec. Orç."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
-      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
     },
     {
-      accessorKey: "realizado",
-      header: sortHeader("Realizado"),
+      accessorKey: "realizadoReceita",
+      header: sortHeader("Rec. Real."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
-      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
     },
     {
-      accessorKey: "desvio",
-      header: sortHeader("Desvio"),
+      accessorKey: "orcadoDespesa",
+      header: sortHeader("Desp. Orç."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+    },
+    {
+      accessorKey: "realizadoDespesa",
+      header: sortHeader("Desp. Real."),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+    },
+    {
+      accessorKey: "resultado",
+      header: sortHeader("Resultado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
       aggregationFn: "sum",
       cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
       aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
     },
     {
-      accessorKey: "exec",
-      header: sortHeader("Execução"),
+      accessorKey: "execReceita",
+      header: sortHeader("Exec. Rec."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
       size: 110,
       enableGrouping: false,
-      cell: ({ row, getValue }) =>
-        row.original.orcado === 0 ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <div className="text-right tabular-nums">{percent(Number(getValue() ?? 0))}</div>
-        ),
+      cell: execReceitaCell,
+    },
+    {
+      accessorKey: "execDespesa",
+      header: sortHeader("Exec. Desp."),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 110,
+      enableGrouping: false,
+      cell: execDespesaCell,
     },
   ];
 
@@ -219,6 +278,7 @@ function ResumoRubricasGrid({
 
   );
 }
+
 
 
 
