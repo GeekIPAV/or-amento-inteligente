@@ -95,7 +95,8 @@ export const gerarAlertas = createServerFn({ method: "POST" })
       descricao: string;
       severidade: AlertaSeveridade;
       link_rota: string;
-      dados: Record<string, unknown>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      dados: any;
       chave: string;
     };
     const novos: NovoAlerta[] = [];
