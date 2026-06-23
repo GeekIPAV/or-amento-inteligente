@@ -553,19 +553,28 @@ function Dashboard() {
             </TabsList>
             <TabsContent value="ambos" className="h-80 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data?.grafico ?? []}>
+                <ComposedChart data={data?.grafico ?? []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="mes" tickFormatter={(m) => MESES_CURTOS[m - 1]} />
                   <YAxis tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v)} />
                   <Tooltip formatter={(v: number) => currency.format(v)} labelFormatter={(m) => MESES_LONGOS[(m as number) - 1]} />
                   <Legend />
-                  <Bar dataKey="receitaOrc" name="Receita Orçada" fill="hsl(160 70% 75%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
-                  <Bar dataKey="receitaReal" name="Receita Realizada" fill="hsl(160 70% 45%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
-                  <Bar dataKey="despesaOrc" name="Despesa Orçada" fill="hsl(0 70% 80%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
-                  <Bar dataKey="despesaReal" name="Despesa Realizada" fill="hsl(0 70% 55%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
-                </BarChart>
+                  <Bar dataKey="receitaOrc" name="Rec. Orç." fill="hsl(160 50% 70%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
+                  <Bar dataKey="receitaReal" name="Rec. Real." fill="hsl(160 60% 40%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
+                  <Bar dataKey="despesaOrc" name="Desp. Orç." fill="hsl(0 50% 75%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
+                  <Bar dataKey="despesaReal" name="Desp. Real." fill="hsl(0 65% 50%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
+                  <Line
+                    type="monotone"
+                    dataKey="resultado"
+                    name="Resultado"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </TabsContent>
+
             {(["receita", "despesa"] as const).map((t) => (
               <TabsContent key={t} value={t} className="h-80 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
