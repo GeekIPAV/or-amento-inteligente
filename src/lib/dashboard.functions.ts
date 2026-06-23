@@ -545,8 +545,13 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
         q = q.or("centro_custo.is.null,centro_custo.eq.");
       else q = q.eq("centro_custo", projeto);
     }
-    const { data: txs, error: errT } = await q;
+    const { data: txsRaw, error: errT } = await q;
     if (errT) throw new Error(errT.message);
+
+    // Filtra transações sem rubrica atribuída quando o cenário é "sem rubrica"
+    const txs = rubricaSemAtribuicao && contasAtribuidasSet
+      ? (txsRaw ?? []).filter((t: any) => !contasAtribuidasSet!.has(String(t.conta ?? "")))
+      : txsRaw;
 
     // Versões ativas do orçamento (uma por ano)
     const { data: versoesAtivas } = await context.supabase
@@ -567,9 +572,22 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
         .lte("mes", mesFim)
         .order("ano", { ascending: true })
         .order("mes", { ascending: true });
-      if (projeto) oq = oq.eq("projeto", projeto);
+      if (projeto) {
+        if (projeto === SENTINEL_SEM_PROJETO || projeto === SEM_PROJETO) {
+          // Linhas de orçamento cujo projeto não tem mapeamento → não filtramos por aqui
+          // (filtragem client-side abaixo)
+        } else {
+          oq = oq.eq("projeto", projeto);
+        }
+      }
       if (tipo) oq = oq.eq("tipo", tipo);
-      if (rubrica) oq = oq.eq("rubrica", rubrica);
+      if (rubrica) {
+        if (rubrica === SENTINEL_SEM_RUBRICA || rubrica === SEM_RUBRICA) {
+          oq = oq.or("rubrica.is.null,rubrica.eq.");
+        } else {
+          oq = oq.eq("rubrica", rubrica);
+        }
+      }
       const { data: o, error: errO } = await oq;
       if (errO) throw new Error(errO.message);
       orcRows = o ?? [];
@@ -583,10 +601,20 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
       (mapas ?? []).map((m: any) => [m.centro_custo, m.nome_projeto]),
     );
 
+    // Para SEM_PROJETO: filtra linhas de orçamento cujo `projeto` não tem mapping
+    if (projeto === SENTINEL_SEM_PROJETO || projeto === SEM_PROJETO) {
+      const projetosOrcMapeados = new Set<string>();
+      const { data: ccp } = await context.supabase
+        .from("centro_custo_projetos")
+        .select("nome_projeto");
+      (ccp ?? []).forEach((r: any) => projetosOrcMapeados.add(String(r.nome_projeto)));
+      orcRows = orcRows.filter((o: any) => !projetosOrcMapeados.has(String(o.projeto ?? "")));
+    }
+
     return {
       transacoes: (txs ?? []).map((t: any) => ({
         ...t,
-        projeto_nome: nomeByCC.get(String(t.centro_custo ?? "")) ?? t.centro_custo ?? "(Sem projeto)",
+        projeto_nome: nomeByCC.get(String(t.centro_custo ?? "")) ?? t.centro_custo ?? SEM_PROJETO,
       })),
       orcamento: orcRows.map((o: any) => ({
         ...o,
