@@ -383,6 +383,51 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       }
     }
 
+    // Movimentos cuja conta não está atribuída a nenhuma rubrica → SEM_RUBRICA
+    {
+      const { data: todasContas } = await context.supabase
+        .from("conta_rubricas")
+        .select("conta");
+      const contasComRubrica = new Set(
+        (todasContas ?? []).map((r: any) => String(r.conta)),
+      );
+      for (const y of anosAlvo) {
+        const meses: string[] = [];
+        for (let mm = mesIni; mm <= mesFim; mm++) {
+          meses.push(`${y}-${String(mm).padStart(2, "0")}`);
+        }
+        const { data: movsSemRub } = await context.supabase
+          .from("transacoes_extrato")
+          .select("conta, debito, credito")
+          .in("mes_referencia", meses)
+          .or("conta.like.6%,conta.like.7%");
+        let recSem = 0;
+        let despSem = 0;
+        for (const t of (movsSemRub ?? []) as any[]) {
+          const conta = String(t.conta ?? "");
+          if (contasComRubrica.has(conta)) continue;
+          if (conta.startsWith("7")) recSem += Number(t.credito ?? 0) - Number(t.debito ?? 0);
+          else if (conta.startsWith("6")) despSem += Number(t.debito ?? 0) - Number(t.credito ?? 0);
+        }
+        if (recSem !== 0 || despSem !== 0) {
+          const existing = rubMap.get(SEM_RUBRICA);
+          if (existing) {
+            existing.realizadoReceita += recSem;
+            existing.realizadoDespesa += despSem;
+          } else {
+            rubMap.set(SEM_RUBRICA, {
+              rubrica: SEM_RUBRICA,
+              orcadoReceita: 0,
+              orcadoDespesa: 0,
+              realizadoReceita: recSem,
+              realizadoDespesa: despSem,
+            });
+          }
+        }
+      }
+    }
+
+
 
     const grafico = Array.from({ length: mesFim - mesIni + 1 }, (_, i) => {
       const idx = mesIni - 1 + i;
