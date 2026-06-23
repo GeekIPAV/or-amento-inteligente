@@ -365,27 +365,59 @@ function Dashboard() {
       return next;
     } });
 
-  const projetos = useMemo(() => {
+  const projetos: ProjRow[] = useMemo(() => {
     if (!data) return [];
-    return data.projetos
-      .map((p: any) => {
-        const desvio = p.orcado - p.realizado;
-        const exec = p.orcado === 0 ? 0 : p.realizado / p.orcado;
-        return { ...p, desvio, exec };
+    return (data.projetos as any[])
+      .map((p) => {
+        const orcadoReceita = Number(p.orcadoReceita ?? 0);
+        const orcadoDespesa = Number(p.orcadoDespesa ?? 0);
+        const realizadoReceita = Number(p.realizadoReceita ?? 0);
+        const realizadoDespesa = Number(p.realizadoDespesa ?? 0);
+        return {
+          projeto: p.projeto,
+          nome: p.nome,
+          orcadoReceita,
+          orcadoDespesa,
+          realizadoReceita,
+          realizadoDespesa,
+          resultado: realizadoReceita - realizadoDespesa,
+          execReceita: orcadoReceita === 0 ? 0 : realizadoReceita / orcadoReceita,
+          execDespesa: orcadoDespesa === 0 ? 0 : realizadoDespesa / orcadoDespesa,
+        } as ProjRow;
       })
-      .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
+      .sort((a, b) => {
+        const ma = Math.max(a.orcadoReceita, a.orcadoDespesa, a.realizadoReceita, a.realizadoDespesa);
+        const mb = Math.max(b.orcadoReceita, b.orcadoDespesa, b.realizadoReceita, b.realizadoDespesa);
+        return mb - ma;
+      });
   }, [data]);
 
   const rubricas: RubRow[] = useMemo(() => {
     if (!data || !(data as any).rubricas) return [];
-    return ((data as any).rubricas as Array<{ rubrica: string; orcado: number; realizado: number }>)
+    return ((data as any).rubricas as any[])
       .map((r) => {
-        const desvio = r.orcado - r.realizado;
-        const exec = r.orcado === 0 ? 0 : r.realizado / r.orcado;
-        return { ...r, desvio, exec };
+        const orcadoReceita = Number(r.orcadoReceita ?? 0);
+        const orcadoDespesa = Number(r.orcadoDespesa ?? 0);
+        const realizadoReceita = Number(r.realizadoReceita ?? 0);
+        const realizadoDespesa = Number(r.realizadoDespesa ?? 0);
+        return {
+          rubrica: r.rubrica,
+          orcadoReceita,
+          orcadoDespesa,
+          realizadoReceita,
+          realizadoDespesa,
+          resultado: realizadoReceita - realizadoDespesa,
+          execReceita: orcadoReceita === 0 ? 0 : realizadoReceita / orcadoReceita,
+          execDespesa: orcadoDespesa === 0 ? 0 : realizadoDespesa / orcadoDespesa,
+        } as RubRow;
       })
-      .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
+      .sort((a, b) => {
+        const ma = Math.max(a.orcadoReceita, a.orcadoDespesa, a.realizadoReceita, a.realizadoDespesa);
+        const mb = Math.max(b.orcadoReceita, b.orcadoDespesa, b.realizadoReceita, b.realizadoDespesa);
+        return mb - ma;
+      });
   }, [data]);
+
 
 
 
