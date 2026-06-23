@@ -337,6 +337,7 @@ export function DataGrid<T>({
   maxHeight = "72vh",
   emptyMessage = "Sem dados.",
   onRowClick,
+  getRowClassName,
 }: DataGridProps<T>) {
 
   const [sorting, setSorting] = useState<SortingState>([]);
