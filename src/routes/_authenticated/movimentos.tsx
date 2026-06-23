@@ -43,14 +43,22 @@ function MovimentosPage() {
   const data = rows as Mov[];
 
   const summary = useMemo(() => {
-    let deb = 0,
-      cred = 0;
+    let receita = 0;
+    let despesa = 0;
+    let outros = 0;
     for (const r of data) {
-      deb += Number(r.debito) || 0;
-      cred += Number(r.credito) || 0;
+      const conta = String(r.conta ?? "");
+      if (conta.startsWith("7")) {
+        receita += Number(r.credito) - Number(r.debito);
+      } else if (conta.startsWith("6")) {
+        despesa += Number(r.debito) - Number(r.credito);
+      } else {
+        outros += Number(r.credito) - Number(r.debito);
+      }
     }
-    return { deb, cred, saldo: cred - deb, linhas: data.length };
+    return { receita, despesa, resultado: receita - despesa, outros, linhas: data.length };
   }, [data]);
+
 
   const columns = useMemo<ColumnDef<Mov, any>[]>(
     () => [
