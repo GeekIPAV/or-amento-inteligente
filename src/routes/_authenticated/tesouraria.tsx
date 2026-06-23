@@ -298,10 +298,10 @@ function TesourariaPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard label="Entradas previstas" value={fmtEur(totais.entradasPrev)} valueClass="text-emerald-700" />
-        <SummaryCard label="Saídas previstas" value={fmtEur(-totais.saidasPrev)} valueClass="text-red-600" />
-        <SummaryCard label="Saldo previsto" value={fmtEur(totais.saldoPrev)} valueClass={totais.saldoPrev < 0 ? "text-red-600" : "text-foreground"} />
-        <SummaryCard label="Saldo real" value={fmtEur(totais.saldoReal)} valueClass={totais.saldoReal < 0 ? "text-red-600" : "text-foreground"} />
+        <SummaryCard label="Entradas previstas" value={fmtEur(totais.entradasPrev)} tone="receita" />
+        <SummaryCard label="Saídas previstas" value={fmtEur(-totais.saidasPrev)} tone="despesa" />
+        <SummaryCard label="Saldo previsto" value={fmtEur(totais.saldoPrev)} tone={totais.saldoPrev < 0 ? "despesa" : "neutral"} />
+        <SummaryCard label="Saldo real" value={fmtEur(totais.saldoReal)} tone={totais.saldoReal < 0 ? "despesa" : "neutral"} />
       </div>
 
       <div className="rounded-lg border border-border bg-card p-4">
