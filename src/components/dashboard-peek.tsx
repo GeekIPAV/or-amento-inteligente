@@ -104,29 +104,34 @@ export function DashboardPeek({
                     <th className="px-2 py-1 text-left">Conta</th>
                     <th className="px-2 py-1 text-left">Descrição</th>
                     <th className="px-2 py-1 text-left">Projeto</th>
-                    <th className="px-2 py-1 text-right">Crédito</th>
-                    <th className="px-2 py-1 text-right">Débito</th>
+                    <th className="px-2 py-1 text-right">Valor</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
-                    <SkeletonRows cols={6} />
+                    <SkeletonRows cols={5} />
                   ) : (data?.transacoes ?? []).length === 0 ? (
-                    <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Sem transações no intervalo.</td></tr>
+                    <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Sem transações no intervalo.</td></tr>
                   ) : (
                     data!.transacoes.map((t: any) => {
-                      const isRec = String(t.conta ?? "").startsWith("7");
+                      const conta = String(t.conta ?? "");
+                      const valor = conta.startsWith("7")
+                        ? Number(t.credito ?? 0) - Number(t.debito ?? 0)
+                        : conta.startsWith("6")
+                          ? -(Number(t.debito ?? 0) - Number(t.credito ?? 0))
+                          : Number(t.credito ?? 0) - Number(t.debito ?? 0);
                       return (
                         <tr key={t.id} className="border-t border-border/40">
                           <td className="px-2 py-1 whitespace-nowrap tabular-nums">{t.data ?? "—"}</td>
                           <td className="px-2 py-1 whitespace-nowrap font-mono text-xs">{t.conta}</td>
                           <td className="px-2 py-1">{t.descricao_conta ?? "—"}</td>
                           <td className="px-2 py-1 text-muted-foreground">{t.projeto_nome}</td>
-                          <td className={cn("px-2 py-1 text-right tabular-nums", isRec && Number(t.credito) > 0 && "text-emerald-600 dark:text-emerald-400")}>
-                            {Number(t.credito) ? currency.format(Number(t.credito)) : "—"}
-                          </td>
-                          <td className={cn("px-2 py-1 text-right tabular-nums", !isRec && Number(t.debito) > 0 && "text-rose-600 dark:text-rose-400")}>
-                            {Number(t.debito) ? currency.format(Number(t.debito)) : "—"}
+                          <td className={cn(
+                            "px-2 py-1 text-right tabular-nums font-medium",
+                            valor > 0 && "text-emerald-600 dark:text-emerald-400",
+                            valor < 0 && "text-rose-600 dark:text-rose-400",
+                          )}>
+                            {valor === 0 ? "—" : currency.format(valor)}
                           </td>
                         </tr>
                       );
@@ -139,20 +144,18 @@ export function DashboardPeek({
                       <td colSpan={4} className="px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">
                         Total <span className="ml-1 normal-case text-muted-foreground/70">({data!.transacoes.length})</span>
                       </td>
-                      <td className="px-2 py-1 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                        {currency.format(
-                          data!.transacoes.reduce((a: number, t: any) => a + Number(t.credito ?? 0), 0),
-                        )}
-                      </td>
-                      <td className="px-2 py-1 text-right tabular-nums text-rose-600 dark:text-rose-400">
-                        {currency.format(
-                          data!.transacoes.reduce((a: number, t: any) => a + Number(t.debito ?? 0), 0),
-                        )}
+                      <td className={cn(
+                        "px-2 py-1 text-right tabular-nums",
+                        resultado > 0 && "text-emerald-600 dark:text-emerald-400",
+                        resultado < 0 && "text-rose-600 dark:text-rose-400",
+                      )}>
+                        {currency.format(resultado)}
                       </td>
                     </tr>
                   </tfoot>
                 )}
               </table>
+
             </div>
 
             {data && data.transacoes.length >= 1000 && (
