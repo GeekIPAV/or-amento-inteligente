@@ -411,14 +411,24 @@ function Dashboard() {
     if (!data) return [];
     return (data.projetos as any[])
       .map((p) => {
-        const orcado = Number(p.orcado ?? 0);
-        const realizado = Number(p.realizado ?? 0);
+        const orcRec = Number(p.orcadoReceita ?? 0);
+        const orcDesp = -Math.abs(Number(p.orcadoDespesa ?? 0));
+        const realRec = Number(p.realizadoReceita ?? 0);
+        const realDesp = -Math.abs(Number(p.realizadoDespesa ?? 0));
+        const orcado = Number(p.orcado ?? (orcRec + orcDesp));
+        const realizado = Number(p.realizado ?? (realRec + realDesp));
         const desvio = realizado - orcado;
         const ref = Math.abs(orcado);
         const exec = ref === 0 ? 0 : realizado / orcado;
         return {
           projeto: p.projeto,
           nome: p.nome,
+          orcadoReceita: orcRec,
+          orcadoDespesa: orcDesp,
+          orcadoResultado: orcRec + orcDesp,
+          realizadoReceita: realRec,
+          realizadoDespesa: realDesp,
+          realizadoResultado: realRec + realDesp,
           orcado,
           realizado,
           desvio,
@@ -427,6 +437,7 @@ function Dashboard() {
       })
       .sort((a, b) => Math.abs(b.orcado) + Math.abs(b.realizado) - (Math.abs(a.orcado) + Math.abs(a.realizado)));
   }, [data]);
+
 
   const rubricas: RubRow[] = useMemo(() => {
     if (!data || !(data as any).rubricas) return [];
