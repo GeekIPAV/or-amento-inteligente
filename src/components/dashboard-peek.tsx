@@ -58,7 +58,13 @@ export function DashboardPeek({
     (a, t: any) => a + (String(t.conta ?? "").startsWith("6") ? Number(t.debito ?? 0) - Number(t.credito ?? 0) : 0),
     0,
   );
-  const totOrc = (data?.orcamento ?? []).reduce((a, o: any) => a + Number(o.valor ?? 0), 0);
+  const orcReceita = (data?.orcamento ?? [])
+    .filter((o: any) => o.tipo === "RECEITA")
+    .reduce((a: number, o: any) => a + Number(o.valor ?? 0), 0);
+  const orcDespesa = (data?.orcamento ?? [])
+    .filter((o: any) => o.tipo === "DESPESA")
+    .reduce((a: number, o: any) => a + Number(o.valor ?? 0), 0);
+  const resultado = totReceita - totDespesa;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,12 +76,14 @@ export function DashboardPeek({
           )}
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
           <Kpi label="Receita realizada" value={currency.format(totReceita)} tone="receita" />
           <Kpi label="Despesa realizada" value={currency.format(totDespesa)} tone="despesa" />
-          <Kpi label="Saldo" value={currency.format(totReceita - totDespesa)} />
-          <Kpi label="Orçamentado" value={currency.format(totOrc)} />
+          <Kpi label="Resultado" value={currency.format(resultado)} tone={resultado >= 0 ? "receita" : "despesa"} />
+          <Kpi label="Orç. Receita" value={currency.format(orcReceita)} tone="receita" />
+          <Kpi label="Orç. Despesa" value={currency.format(orcDespesa)} tone="despesa" />
         </div>
+
 
         <Tabs defaultValue="transacoes" className="mt-2">
           <TabsList>
