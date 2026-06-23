@@ -304,6 +304,45 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       }
     }
 
+    // Movimentos sem centro_custo atribuído → SEM_PROJETO
+    for (const y of anosAlvo) {
+      const meses: string[] = [];
+      for (let mm = mesIni; mm <= mesFim; mm++) {
+        meses.push(`${y}-${String(mm).padStart(2, "0")}`);
+      }
+      const { data: semProjeto } = await context.supabase
+        .from("transacoes_extrato")
+        .select("conta, debito, credito")
+        .in("mes_referencia", meses)
+        .or("centro_custo.is.null,centro_custo.eq.")
+        .or("conta.like.6%,conta.like.7%");
+      let recSem = 0;
+      let despSem = 0;
+      for (const t of (semProjeto ?? []) as any[]) {
+        const conta = String(t.conta ?? "");
+        if (conta.startsWith("7")) recSem += Number(t.credito ?? 0) - Number(t.debito ?? 0);
+        else if (conta.startsWith("6")) despSem += Number(t.debito ?? 0) - Number(t.credito ?? 0);
+      }
+      if (recSem !== 0 || despSem !== 0) {
+        const existing = projMap.get(SEM_PROJETO);
+        if (existing) {
+          existing.realizadoReceita += recSem;
+          existing.realizadoDespesa += despSem;
+        } else {
+          projMap.set(SEM_PROJETO, {
+            projeto: SEM_PROJETO,
+            nome: SEM_PROJETO,
+            orcadoReceita: 0,
+            orcadoDespesa: 0,
+            realizadoReceita: recSem,
+            realizadoDespesa: despSem,
+          });
+        }
+        receitaReal += recSem;
+        despesaReal += despSem;
+      }
+    }
+
 
     // Realizados — por rubrica (intervalo + multi-ano), via match conta→rubrica.
     type RubRow = {
