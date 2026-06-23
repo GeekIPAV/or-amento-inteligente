@@ -79,9 +79,9 @@ function AlertasPage() {
   const resolverFn = useServerFn(resolverAlerta);
   const gerarFn = useServerFn(gerarAlertas);
 
-  const { data: alertas = [] } = useQuery({
+  const { data: alertas = [] } = useQuery<AlertaRow[]>({
     queryKey: ["alertas", filtro],
-    queryFn: () => listFn({ data: { filtro } }),
+    queryFn: () => listFn({ data: { filtro } }) as Promise<AlertaRow[]>,
   });
 
   // Generate alerts on mount (silent)
