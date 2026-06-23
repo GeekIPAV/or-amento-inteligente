@@ -308,6 +308,7 @@ export interface DataGridProps<T> {
   groupable?: GroupableOption[];
   defaultColumnOrder?: string[];
   initialGrouping?: string[];
+  initialColumnVisibility?: VisibilityState;
   toolbarExtra?: ReactNode;
   searchPlaceholder?: string;
   showSearch?: boolean;
@@ -317,6 +318,7 @@ export interface DataGridProps<T> {
   emptyMessage?: string;
   onRowClick?: (row: T) => void;
 }
+
 
 export function DataGrid<T>({
   data,
