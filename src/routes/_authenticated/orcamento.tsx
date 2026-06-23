@@ -1279,17 +1279,18 @@ function EditableNumberCell({
     if (!editing) setDraft(String(value ?? ""));
   }, [value, editing]);
 
+  const displayValue = tone === "despesa" ? -Math.abs(value ?? 0) : (value ?? 0);
   const formatted = currency
     ? new Intl.NumberFormat("pt-PT", {
         style: "currency",
         currency: "EUR",
-      }).format(value ?? 0)
+      }).format(displayValue)
     : decimals > 0
       ? new Intl.NumberFormat("pt-PT", {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
-        }).format(value ?? 0)
-      : String(value ?? "");
+        }).format(displayValue)
+      : String(displayValue ?? "");
 
   if (!editing) {
     return (
