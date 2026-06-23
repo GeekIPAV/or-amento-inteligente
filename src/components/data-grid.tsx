@@ -273,15 +273,17 @@ export function CurrencyCell({
   tone?: "receita" | "despesa" | "auto" | "neutral";
   showZeroAsDash?: boolean;
 }) {
-  const n = Number(value) || 0;
-  if (showZeroAsDash && n === 0)
+  const raw = Number(value) || 0;
+  if (showZeroAsDash && raw === 0)
     return <span className="text-muted-foreground">—</span>;
   const t =
     tone === "auto"
-      ? n >= 0
+      ? raw >= 0
         ? "receita"
         : "despesa"
       : tone;
+  // Despesas display as negative magnitude regardless of how they were passed in
+  const n = t === "despesa" ? -Math.abs(raw) : raw;
   return (
     <div
       className={cn(
