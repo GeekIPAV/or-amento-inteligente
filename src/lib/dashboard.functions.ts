@@ -502,13 +502,25 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
 
     // Se filtrado por rubrica, obter contas associadas
     let contasRubrica: string[] | null = null;
-    if (rubrica) {
+    let rubricaSemAtribuicao = false;
+    if (rubrica === SENTINEL_SEM_RUBRICA) {
+      rubricaSemAtribuicao = true;
+    } else if (rubrica) {
       const { data: cr, error: errCR } = await context.supabase
         .from("conta_rubricas")
         .select("conta")
         .eq("rubrica", rubrica);
       if (errCR) throw new Error(errCR.message);
       contasRubrica = (cr ?? []).map((r: any) => String(r.conta));
+    }
+
+    // Conjunto global de contas atribuídas (necessário para sem-rubrica)
+    let contasAtribuidasSet: Set<string> | null = null;
+    if (rubricaSemAtribuicao) {
+      const { data: todasCR } = await context.supabase
+        .from("conta_rubricas")
+        .select("conta");
+      contasAtribuidasSet = new Set((todasCR ?? []).map((r: any) => String(r.conta)));
     }
 
     // Transações (limitado a 1000 para o peek)
@@ -529,7 +541,7 @@ export const detalhesIntervalo = createServerFn({ method: "GET" })
       else q = q.or("conta.like.6%,conta.like.7%");
     }
     if (projeto) {
-      if (projeto === "(Sem projeto)")
+      if (projeto === SENTINEL_SEM_PROJETO || projeto === SEM_PROJETO || projeto === "(Sem projeto)")
         q = q.or("centro_custo.is.null,centro_custo.eq.");
       else q = q.eq("centro_custo", projeto);
     }
