@@ -1381,12 +1381,24 @@ function textColumn(
     header: sortHeader(label),
     filterFn: textFilterFn,
     meta: { filterType: "text" as const },
-    cell: ({ row }) => (
-      <EditableTextCell
-        value={(row.original as any)[key] ?? null}
-        onSave={(v) => save(row.original, { [key]: v } as Partial<Linha>)}
-      />
-    ),
+    cell: ({ row }) => {
+      const v = (row.original as any)[key];
+      const isEmpty = (key === "projeto" || key === "rubrica") && (!v || String(v).trim() === "");
+      return (
+        <div className="flex items-center gap-1.5">
+          {isEmpty && (
+            <AlertTriangle
+              className="h-3.5 w-3.5 shrink-0 text-amber-500"
+              aria-label={`Sem ${key}`}
+            />
+          )}
+          <EditableTextCell
+            value={v ?? null}
+            onSave={(nv) => save(row.original, { [key]: nv } as Partial<Linha>)}
+          />
+        </div>
+      );
+    },
   };
 }
 
