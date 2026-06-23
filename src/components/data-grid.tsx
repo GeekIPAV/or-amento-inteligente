@@ -327,6 +327,7 @@ export function DataGrid<T>({
   groupable = [],
   defaultColumnOrder,
   initialGrouping = [],
+  initialColumnVisibility,
   toolbarExtra,
   searchPlaceholder = "Pesquisar…",
   showSearch = true,
@@ -339,7 +340,8 @@ export function DataGrid<T>({
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility ?? {});
+
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(
     defaultColumnOrder ?? [],
   );
