@@ -28,6 +28,12 @@ import {
 type ProjRow = {
   projeto: string;
   nome?: string | null;
+  orcadoReceita: number;
+  orcadoDespesa: number;
+  orcadoResultado: number;
+  realizadoReceita: number;
+  realizadoDespesa: number;
+  realizadoResultado: number;
   orcado: number;
   realizado: number;
   desvio: number;
@@ -88,8 +94,18 @@ function ResumoProjetosGrid({
       },
     },
     {
-      accessorKey: "orcado",
-      header: sortHeader("Orçamentado"),
+      accessorKey: "orcadoReceita",
+      header: sortHeader("Orç. Receita"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+    },
+    {
+      accessorKey: "orcadoResultado",
+      header: sortHeader("Orç. Resultado"),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
       size: 140,
@@ -98,11 +114,41 @@ function ResumoProjetosGrid({
       aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
     },
     {
-      accessorKey: "realizado",
-      header: sortHeader("Realizado"),
+      accessorKey: "orcadoDespesa",
+      header: sortHeader("Orç. Despesa"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+    },
+    {
+      accessorKey: "realizadoReceita",
+      header: sortHeader("Real. Receita"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+    },
+    {
+      accessorKey: "realizadoResultado",
+      header: sortHeader("Real. Resultado"),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
       size: 140,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+    },
+    {
+      accessorKey: "realizadoDespesa",
+      header: sortHeader("Real. Despesa"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
       aggregationFn: "sum",
       cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
       aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
@@ -112,7 +158,7 @@ function ResumoProjetosGrid({
       header: sortHeader("Desvio"),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
       cell: ({ getValue }) => (
         <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
@@ -365,14 +411,24 @@ function Dashboard() {
     if (!data) return [];
     return (data.projetos as any[])
       .map((p) => {
-        const orcado = Number(p.orcado ?? 0);
-        const realizado = Number(p.realizado ?? 0);
+        const orcRec = Number(p.orcadoReceita ?? 0);
+        const orcDesp = -Math.abs(Number(p.orcadoDespesa ?? 0));
+        const realRec = Number(p.realizadoReceita ?? 0);
+        const realDesp = -Math.abs(Number(p.realizadoDespesa ?? 0));
+        const orcado = Number(p.orcado ?? (orcRec + orcDesp));
+        const realizado = Number(p.realizado ?? (realRec + realDesp));
         const desvio = realizado - orcado;
         const ref = Math.abs(orcado);
         const exec = ref === 0 ? 0 : realizado / orcado;
         return {
           projeto: p.projeto,
           nome: p.nome,
+          orcadoReceita: orcRec,
+          orcadoDespesa: orcDesp,
+          orcadoResultado: orcRec + orcDesp,
+          realizadoReceita: realRec,
+          realizadoDespesa: realDesp,
+          realizadoResultado: realRec + realDesp,
           orcado,
           realizado,
           desvio,
@@ -381,6 +437,7 @@ function Dashboard() {
       })
       .sort((a, b) => Math.abs(b.orcado) + Math.abs(b.realizado) - (Math.abs(a.orcado) + Math.abs(a.realizado)));
   }, [data]);
+
 
   const rubricas: RubRow[] = useMemo(() => {
     if (!data || !(data as any).rubricas) return [];
