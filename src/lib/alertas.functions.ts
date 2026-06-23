@@ -11,7 +11,8 @@ export type AlertaRow = {
   descricao: string | null;
   severidade: AlertaSeveridade;
   link_rota: string | null;
-  dados: Record<string, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dados: any;
   lido: boolean;
   resolvido: boolean;
   chave: string | null;

@@ -13,12 +13,16 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AceitarConviteRouteImport } from './routes/aceitar-convite'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedTesourariaRouteImport } from './routes/_authenticated/tesouraria'
+import { Route as AuthenticatedRelatorioRouteImport } from './routes/_authenticated/relatorio'
 import { Route as AuthenticatedPromptsRouteImport } from './routes/_authenticated/prompts'
 import { Route as AuthenticatedOrcamentoRouteImport } from './routes/_authenticated/orcamento'
 import { Route as AuthenticatedMovimentosRouteImport } from './routes/_authenticated/movimentos'
 import { Route as AuthenticatedImportarExtratosRouteImport } from './routes/_authenticated/importar-extratos'
+import { Route as AuthenticatedFinanciadoresRouteImport } from './routes/_authenticated/financiadores'
 import { Route as AuthenticatedContasRubricasRouteImport } from './routes/_authenticated/contas-rubricas'
 import { Route as AuthenticatedCentrosCustoRouteImport } from './routes/_authenticated/centros-custo'
+import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
 const AuthRoute = AuthRouteImport.update({
@@ -38,6 +42,16 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTesourariaRoute = AuthenticatedTesourariaRouteImport.update({
+  id: '/tesouraria',
+  path: '/tesouraria',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRelatorioRoute = AuthenticatedRelatorioRouteImport.update({
+  id: '/relatorio',
+  path: '/relatorio',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPromptsRoute = AuthenticatedPromptsRouteImport.update({
@@ -61,6 +75,12 @@ const AuthenticatedImportarExtratosRoute =
     path: '/importar-extratos',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFinanciadoresRoute =
+  AuthenticatedFinanciadoresRouteImport.update({
+    id: '/financiadores',
+    path: '/financiadores',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedContasRubricasRoute =
   AuthenticatedContasRubricasRouteImport.update({
     id: '/contas-rubricas',
@@ -73,6 +93,11 @@ const AuthenticatedCentrosCustoRoute =
     path: '/centros-custo',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAlertasRoute = AuthenticatedAlertasRouteImport.update({
+  id: '/alertas',
+  path: '/alertas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -84,23 +109,31 @@ export interface FileRoutesByFullPath {
   '/aceitar-convite': typeof AceitarConviteRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/alertas': typeof AuthenticatedAlertasRoute
   '/centros-custo': typeof AuthenticatedCentrosCustoRoute
   '/contas-rubricas': typeof AuthenticatedContasRubricasRoute
+  '/financiadores': typeof AuthenticatedFinanciadoresRoute
   '/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
   '/prompts': typeof AuthenticatedPromptsRoute
+  '/relatorio': typeof AuthenticatedRelatorioRoute
+  '/tesouraria': typeof AuthenticatedTesourariaRoute
 }
 export interface FileRoutesByTo {
   '/aceitar-convite': typeof AceitarConviteRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/alertas': typeof AuthenticatedAlertasRoute
   '/centros-custo': typeof AuthenticatedCentrosCustoRoute
   '/contas-rubricas': typeof AuthenticatedContasRubricasRoute
+  '/financiadores': typeof AuthenticatedFinanciadoresRoute
   '/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/movimentos': typeof AuthenticatedMovimentosRoute
   '/orcamento': typeof AuthenticatedOrcamentoRoute
   '/prompts': typeof AuthenticatedPromptsRoute
+  '/relatorio': typeof AuthenticatedRelatorioRoute
+  '/tesouraria': typeof AuthenticatedTesourariaRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -109,12 +142,16 @@ export interface FileRoutesById {
   '/aceitar-convite': typeof AceitarConviteRoute
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
   '/_authenticated/centros-custo': typeof AuthenticatedCentrosCustoRoute
   '/_authenticated/contas-rubricas': typeof AuthenticatedContasRubricasRoute
+  '/_authenticated/financiadores': typeof AuthenticatedFinanciadoresRoute
   '/_authenticated/importar-extratos': typeof AuthenticatedImportarExtratosRoute
   '/_authenticated/movimentos': typeof AuthenticatedMovimentosRoute
   '/_authenticated/orcamento': typeof AuthenticatedOrcamentoRoute
   '/_authenticated/prompts': typeof AuthenticatedPromptsRoute
+  '/_authenticated/relatorio': typeof AuthenticatedRelatorioRoute
+  '/_authenticated/tesouraria': typeof AuthenticatedTesourariaRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
@@ -124,23 +161,31 @@ export interface FileRouteTypes {
     | '/aceitar-convite'
     | '/auth'
     | '/admin'
+    | '/alertas'
     | '/centros-custo'
     | '/contas-rubricas'
+    | '/financiadores'
     | '/importar-extratos'
     | '/movimentos'
     | '/orcamento'
     | '/prompts'
+    | '/relatorio'
+    | '/tesouraria'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/aceitar-convite'
     | '/auth'
     | '/admin'
+    | '/alertas'
     | '/centros-custo'
     | '/contas-rubricas'
+    | '/financiadores'
     | '/importar-extratos'
     | '/movimentos'
     | '/orcamento'
     | '/prompts'
+    | '/relatorio'
+    | '/tesouraria'
     | '/'
   id:
     | '__root__'
@@ -148,12 +193,16 @@ export interface FileRouteTypes {
     | '/aceitar-convite'
     | '/auth'
     | '/_authenticated/admin'
+    | '/_authenticated/alertas'
     | '/_authenticated/centros-custo'
     | '/_authenticated/contas-rubricas'
+    | '/_authenticated/financiadores'
     | '/_authenticated/importar-extratos'
     | '/_authenticated/movimentos'
     | '/_authenticated/orcamento'
     | '/_authenticated/prompts'
+    | '/_authenticated/relatorio'
+    | '/_authenticated/tesouraria'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -193,6 +242,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/tesouraria': {
+      id: '/_authenticated/tesouraria'
+      path: '/tesouraria'
+      fullPath: '/tesouraria'
+      preLoaderRoute: typeof AuthenticatedTesourariaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/relatorio': {
+      id: '/_authenticated/relatorio'
+      path: '/relatorio'
+      fullPath: '/relatorio'
+      preLoaderRoute: typeof AuthenticatedRelatorioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/prompts': {
       id: '/_authenticated/prompts'
       path: '/prompts'
@@ -221,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImportarExtratosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/financiadores': {
+      id: '/_authenticated/financiadores'
+      path: '/financiadores'
+      fullPath: '/financiadores'
+      preLoaderRoute: typeof AuthenticatedFinanciadoresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/contas-rubricas': {
       id: '/_authenticated/contas-rubricas'
       path: '/contas-rubricas'
@@ -235,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCentrosCustoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/alertas': {
+      id: '/_authenticated/alertas'
+      path: '/alertas'
+      fullPath: '/alertas'
+      preLoaderRoute: typeof AuthenticatedAlertasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -247,23 +324,31 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
   AuthenticatedCentrosCustoRoute: typeof AuthenticatedCentrosCustoRoute
   AuthenticatedContasRubricasRoute: typeof AuthenticatedContasRubricasRoute
+  AuthenticatedFinanciadoresRoute: typeof AuthenticatedFinanciadoresRoute
   AuthenticatedImportarExtratosRoute: typeof AuthenticatedImportarExtratosRoute
   AuthenticatedMovimentosRoute: typeof AuthenticatedMovimentosRoute
   AuthenticatedOrcamentoRoute: typeof AuthenticatedOrcamentoRoute
   AuthenticatedPromptsRoute: typeof AuthenticatedPromptsRoute
+  AuthenticatedRelatorioRoute: typeof AuthenticatedRelatorioRoute
+  AuthenticatedTesourariaRoute: typeof AuthenticatedTesourariaRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
   AuthenticatedCentrosCustoRoute: AuthenticatedCentrosCustoRoute,
   AuthenticatedContasRubricasRoute: AuthenticatedContasRubricasRoute,
+  AuthenticatedFinanciadoresRoute: AuthenticatedFinanciadoresRoute,
   AuthenticatedImportarExtratosRoute: AuthenticatedImportarExtratosRoute,
   AuthenticatedMovimentosRoute: AuthenticatedMovimentosRoute,
   AuthenticatedOrcamentoRoute: AuthenticatedOrcamentoRoute,
   AuthenticatedPromptsRoute: AuthenticatedPromptsRoute,
+  AuthenticatedRelatorioRoute: AuthenticatedRelatorioRoute,
+  AuthenticatedTesourariaRoute: AuthenticatedTesourariaRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
