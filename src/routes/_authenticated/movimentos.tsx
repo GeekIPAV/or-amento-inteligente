@@ -43,14 +43,22 @@ function MovimentosPage() {
   const data = rows as Mov[];
 
   const summary = useMemo(() => {
-    let deb = 0,
-      cred = 0;
+    let receita = 0;
+    let despesa = 0;
+    let outros = 0;
     for (const r of data) {
-      deb += Number(r.debito) || 0;
-      cred += Number(r.credito) || 0;
+      const conta = String(r.conta ?? "");
+      if (conta.startsWith("7")) {
+        receita += Number(r.credito) - Number(r.debito);
+      } else if (conta.startsWith("6")) {
+        despesa += Number(r.debito) - Number(r.credito);
+      } else {
+        outros += Number(r.credito) - Number(r.debito);
+      }
     }
-    return { deb, cred, saldo: cred - deb, linhas: data.length };
+    return { receita, despesa, resultado: receita - despesa, outros, linhas: data.length };
   }, [data]);
+
 
   const columns = useMemo<ColumnDef<Mov, any>[]>(
     () => [
@@ -123,6 +131,27 @@ function MovimentosPage() {
         cell: ({ getValue }) => (getValue() as string) ?? "—",
       },
       {
+        id: "valor",
+        header: sortHeader("Valor"),
+        accessorFn: (r: Mov) => {
+          const conta = String(r.conta ?? "");
+          if (conta.startsWith("7")) return Number(r.credito) - Number(r.debito);
+          if (conta.startsWith("6")) return -(Number(r.debito) - Number(r.credito));
+          return Number(r.credito) - Number(r.debito);
+        },
+        filterFn: numFilterFn,
+        meta: { filterType: "number" },
+        size: 140,
+        enableGrouping: false,
+        aggregationFn: "sum",
+        cell: ({ getValue }) => (
+          <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" showZeroAsDash />
+        ),
+        aggregatedCell: ({ getValue }) => (
+          <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
+        ),
+      },
+      {
         accessorKey: "debito",
         header: sortHeader("Débito"),
         filterFn: numFilterFn,
@@ -160,6 +189,7 @@ function MovimentosPage() {
           <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />
         ),
       },
+
     ],
     [],
   );
@@ -174,14 +204,18 @@ function MovimentosPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <SummaryCard label="Créditos" value={fmtEur(summary.cred)} tone="receita" />
-          <SummaryCard label="Débitos" value={fmtEur(summary.deb)} tone="despesa" />
+          <SummaryCard label="Receitas" value={fmtEur(summary.receita)} tone="receita" />
+          <SummaryCard label="Despesas" value={fmtEur(summary.despesa)} tone="despesa" />
           <SummaryCard
-            label="Saldo"
-            value={fmtEur(summary.saldo)}
-            tone={summary.saldo >= 0 ? "receita" : "despesa"}
+            label="Resultado"
+            value={fmtEur(summary.resultado)}
+            tone={summary.resultado >= 0 ? "receita" : "despesa"}
           />
+          {Math.abs(summary.outros) > 0.01 && (
+            <SummaryCard label="Outros" value={fmtEur(summary.outros)} tone="neutral" />
+          )}
         </div>
+
       </div>
 
       <Tabs defaultValue="movimentos">
@@ -191,6 +225,8 @@ function MovimentosPage() {
         </TabsList>
         <TabsContent value="movimentos">
           <DataGrid<Mov>
+            initialColumnVisibility={{ debito: false, credito: false }}
+
             data={data}
             columns={columns}
             getRowId={(r) => r.id}

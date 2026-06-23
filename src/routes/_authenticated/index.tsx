@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { DashboardPeek, type PeekScope } from "@/components/dashboard-peek";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line,
 } from "recharts";
+
 import { z } from "zod";
 import { resumoDashboard, anosDisponiveis, mesesDisponiveis } from "@/lib/dashboard.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,20 +28,39 @@ import {
 type ProjRow = {
   projeto: string;
   nome?: string | null;
-  orcado: number;
-  realizado: number;
-  desvio: number;
-  exec: number;
+  orcadoReceita: number;
+  orcadoDespesa: number;
+  realizadoReceita: number;
+  realizadoDespesa: number;
+  resultado: number;
+  execReceita: number;
+  execDespesa: number;
 };
 
 type RubRow = {
   rubrica: string;
-  orcado: number;
-  realizado: number;
-  desvio: number;
-  exec: number;
+  orcadoReceita: number;
+  orcadoDespesa: number;
+  realizadoReceita: number;
+  realizadoDespesa: number;
+  resultado: number;
+  execReceita: number;
+  execDespesa: number;
 };
 
+
+function execReceitaCell({ row, getValue }: any) {
+  const v = Number(getValue() ?? 0);
+  if (row.original.orcadoReceita === 0) return <span className="text-muted-foreground">—</span>;
+  const cls = v >= 0.9 ? "text-emerald-600" : v >= 0.5 ? "text-amber-600" : "text-rose-600";
+  return <div className={cn("text-right tabular-nums font-medium", cls)}>{percent(v)}</div>;
+}
+function execDespesaCell({ row, getValue }: any) {
+  const v = Number(getValue() ?? 0);
+  if (row.original.orcadoDespesa === 0) return <span className="text-muted-foreground">—</span>;
+  const cls = v <= 1.0 ? "text-emerald-600" : v <= 1.1 ? "text-amber-600" : "text-rose-600";
+  return <div className={cn("text-right tabular-nums font-medium", cls)}>{percent(v)}</div>;
+}
 
 
 function ResumoProjetosGrid({
@@ -68,54 +88,72 @@ function ResumoProjetosGrid({
       ),
     },
     {
-      accessorKey: "orcado",
-      header: sortHeader("Orçamentado"),
+      accessorKey: "orcadoReceita",
+      header: sortHeader("Rec. Orç."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
-      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
     },
     {
-      accessorKey: "realizado",
-      header: sortHeader("Realizado"),
+      accessorKey: "realizadoReceita",
+      header: sortHeader("Rec. Real."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
-      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
     },
     {
-      accessorKey: "desvio",
-      header: sortHeader("Desvio"),
+      accessorKey: "orcadoDespesa",
+      header: sortHeader("Desp. Orç."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => (
-        <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
-      ),
-      aggregatedCell: ({ getValue }) => (
-        <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
-      ),
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
     },
     {
-      accessorKey: "exec",
-      header: sortHeader("Execução"),
+      accessorKey: "realizadoDespesa",
+      header: sortHeader("Desp. Real."),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+    },
+    {
+      accessorKey: "resultado",
+      header: sortHeader("Resultado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
+    },
+    {
+      accessorKey: "execReceita",
+      header: sortHeader("Exec. Rec."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
       size: 110,
       enableGrouping: false,
-      cell: ({ row, getValue }) =>
-        row.original.orcado === 0 ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <div className="text-right tabular-nums">
-            {percent(Number(getValue() ?? 0))}
-          </div>
-        ),
+      cell: execReceitaCell,
+    },
+    {
+      accessorKey: "execDespesa",
+      header: sortHeader("Exec. Desp."),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 110,
+      enableGrouping: false,
+      cell: execDespesaCell,
     },
   ];
 
@@ -132,8 +170,6 @@ function ResumoProjetosGrid({
     />
   );
 }
-
-
 
 
 
@@ -160,48 +196,72 @@ function ResumoRubricasGrid({
       cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
     },
     {
-      accessorKey: "orcado",
-      header: sortHeader("Orçamentado"),
+      accessorKey: "orcadoReceita",
+      header: sortHeader("Rec. Orç."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
-      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
     },
     {
-      accessorKey: "realizado",
-      header: sortHeader("Realizado"),
+      accessorKey: "realizadoReceita",
+      header: sortHeader("Rec. Real."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
       aggregationFn: "sum",
-      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
-      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} />,
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />,
     },
     {
-      accessorKey: "desvio",
-      header: sortHeader("Desvio"),
+      accessorKey: "orcadoDespesa",
+      header: sortHeader("Desp. Orç."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
-      size: 140,
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+    },
+    {
+      accessorKey: "realizadoDespesa",
+      header: sortHeader("Desp. Real."),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
+      aggregationFn: "sum",
+      cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+      aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="despesa" />,
+    },
+    {
+      accessorKey: "resultado",
+      header: sortHeader("Resultado"),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 130,
       aggregationFn: "sum",
       cell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
       aggregatedCell: ({ getValue }) => <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />,
     },
     {
-      accessorKey: "exec",
-      header: sortHeader("Execução"),
+      accessorKey: "execReceita",
+      header: sortHeader("Exec. Rec."),
       filterFn: numFilterFn,
       meta: { filterType: "number" },
       size: 110,
       enableGrouping: false,
-      cell: ({ row, getValue }) =>
-        row.original.orcado === 0 ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <div className="text-right tabular-nums">{percent(Number(getValue() ?? 0))}</div>
-        ),
+      cell: execReceitaCell,
+    },
+    {
+      accessorKey: "execDespesa",
+      header: sortHeader("Exec. Desp."),
+      filterFn: numFilterFn,
+      meta: { filterType: "number" },
+      size: 110,
+      enableGrouping: false,
+      cell: execDespesaCell,
     },
   ];
 
@@ -223,6 +283,7 @@ function ResumoRubricasGrid({
 
 
 
+
 const searchSchema = z.object({
 
   ano: z.number().int().optional(),
@@ -240,10 +301,13 @@ export const Route = createFileRoute("/_authenticated/")({
 function KpiCard({
   titulo, orcado, realizado, modo,
 }: { titulo: string; orcado: number; realizado: number; modo: "receita" | "despesa" }) {
-  const desvio = orcado - realizado;
+  const desvio = modo === "receita" ? realizado - orcado : orcado - realizado;
   const exec = orcado === 0 ? 0 : realizado / orcado;
-  const positivo = modo === "receita" ? realizado >= orcado : realizado <= orcado;
+  const positivo = desvio >= 0;
   const Icon = modo === "receita" ? TrendingUp : TrendingDown;
+  const desvioLabel = modo === "receita"
+    ? (positivo ? "Desvio (receita extra)" : "Em falta")
+    : (positivo ? "Desvio (poupança)" : "Sobrecusto");
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -258,7 +322,7 @@ function KpiCard({
           <span>Orçamentado</span><span>{currency.format(orcado)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Desvio</span>
+          <span className="text-muted-foreground">{desvioLabel}</span>
           <span className={cn("font-medium", positivo ? "text-emerald-600" : "text-rose-600")}>
             {currency.format(desvio)}
           </span>
@@ -271,6 +335,7 @@ function KpiCard({
     </Card>
   );
 }
+
 
 function Dashboard() {
   const search = Route.useSearch();
@@ -305,27 +370,59 @@ function Dashboard() {
       return next;
     } });
 
-  const projetos = useMemo(() => {
+  const projetos: ProjRow[] = useMemo(() => {
     if (!data) return [];
-    return data.projetos
-      .map((p: any) => {
-        const desvio = p.orcado - p.realizado;
-        const exec = p.orcado === 0 ? 0 : p.realizado / p.orcado;
-        return { ...p, desvio, exec };
+    return (data.projetos as any[])
+      .map((p) => {
+        const orcadoReceita = Number(p.orcadoReceita ?? 0);
+        const orcadoDespesa = Number(p.orcadoDespesa ?? 0);
+        const realizadoReceita = Number(p.realizadoReceita ?? 0);
+        const realizadoDespesa = Number(p.realizadoDespesa ?? 0);
+        return {
+          projeto: p.projeto,
+          nome: p.nome,
+          orcadoReceita,
+          orcadoDespesa,
+          realizadoReceita,
+          realizadoDespesa,
+          resultado: realizadoReceita - realizadoDespesa,
+          execReceita: orcadoReceita === 0 ? 0 : realizadoReceita / orcadoReceita,
+          execDespesa: orcadoDespesa === 0 ? 0 : realizadoDespesa / orcadoDespesa,
+        } as ProjRow;
       })
-      .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
+      .sort((a, b) => {
+        const ma = Math.max(a.orcadoReceita, a.orcadoDespesa, a.realizadoReceita, a.realizadoDespesa);
+        const mb = Math.max(b.orcadoReceita, b.orcadoDespesa, b.realizadoReceita, b.realizadoDespesa);
+        return mb - ma;
+      });
   }, [data]);
 
   const rubricas: RubRow[] = useMemo(() => {
     if (!data || !(data as any).rubricas) return [];
-    return ((data as any).rubricas as Array<{ rubrica: string; orcado: number; realizado: number }>)
+    return ((data as any).rubricas as any[])
       .map((r) => {
-        const desvio = r.orcado - r.realizado;
-        const exec = r.orcado === 0 ? 0 : r.realizado / r.orcado;
-        return { ...r, desvio, exec };
+        const orcadoReceita = Number(r.orcadoReceita ?? 0);
+        const orcadoDespesa = Number(r.orcadoDespesa ?? 0);
+        const realizadoReceita = Number(r.realizadoReceita ?? 0);
+        const realizadoDespesa = Number(r.realizadoDespesa ?? 0);
+        return {
+          rubrica: r.rubrica,
+          orcadoReceita,
+          orcadoDespesa,
+          realizadoReceita,
+          realizadoDespesa,
+          resultado: realizadoReceita - realizadoDespesa,
+          execReceita: orcadoReceita === 0 ? 0 : realizadoReceita / orcadoReceita,
+          execDespesa: orcadoDespesa === 0 ? 0 : realizadoDespesa / orcadoDespesa,
+        } as RubRow;
       })
-      .sort((a, b) => Math.max(b.orcado, b.realizado) - Math.max(a.orcado, a.realizado));
+      .sort((a, b) => {
+        const ma = Math.max(a.orcadoReceita, a.orcadoDespesa, a.realizadoReceita, a.realizadoDespesa);
+        const mb = Math.max(b.orcadoReceita, b.orcadoDespesa, b.realizadoReceita, b.realizadoDespesa);
+        return mb - ma;
+      });
   }, [data]);
+
 
 
 
@@ -457,19 +554,28 @@ function Dashboard() {
             </TabsList>
             <TabsContent value="ambos" className="h-80 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data?.grafico ?? []}>
+                <ComposedChart data={data?.grafico ?? []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="mes" tickFormatter={(m) => MESES_CURTOS[m - 1]} />
                   <YAxis tickFormatter={(v) => new Intl.NumberFormat("pt-PT", { notation: "compact" }).format(v)} />
                   <Tooltip formatter={(v: number) => currency.format(v)} labelFormatter={(m) => MESES_LONGOS[(m as number) - 1]} />
                   <Legend />
-                  <Bar dataKey="receitaOrc" name="Receita Orçada" fill="hsl(160 70% 75%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
-                  <Bar dataKey="receitaReal" name="Receita Realizada" fill="hsl(160 70% 45%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
-                  <Bar dataKey="despesaOrc" name="Despesa Orçada" fill="hsl(0 70% 80%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
-                  <Bar dataKey="despesaReal" name="Despesa Realizada" fill="hsl(0 70% 55%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
-                </BarChart>
+                  <Bar dataKey="receitaOrc" name="Rec. Orç." fill="hsl(160 50% 70%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
+                  <Bar dataKey="receitaReal" name="Rec. Real." fill="hsl(160 60% 40%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "RECEITA")} />
+                  <Bar dataKey="despesaOrc" name="Desp. Orç." fill="hsl(0 50% 75%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
+                  <Bar dataKey="despesaReal" name="Desp. Real." fill="hsl(0 65% 50%)" cursor="pointer" onClick={(d: any) => openMonth(d.mes, "DESPESA")} />
+                  <Line
+                    type="monotone"
+                    dataKey="resultado"
+                    name="Resultado"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </TabsContent>
+
             {(["receita", "despesa"] as const).map((t) => (
               <TabsContent key={t} value={t} className="h-80 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
@@ -511,13 +617,15 @@ function Dashboard() {
               {projetos.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-12">Sem dados para apresentar.</p>
               ) : (
-                <div style={{ height: Math.max(280, projetos.length * 36 + 60) }}>
+                <div style={{ height: Math.max(280, projetos.length * 44 + 60) }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={projetos.map((p) => ({
                         projeto: p.nome ?? p.projeto,
-                        Orçamentado: p.orcado,
-                        Realizado: p.realizado,
+                        "Rec. Orç.": p.orcadoReceita,
+                        "Rec. Real.": p.realizadoReceita,
+                        "Desp. Orç.": p.orcadoDespesa,
+                        "Desp. Real.": p.realizadoDespesa,
                         _projeto: p.projeto,
                         _nome: p.nome ?? p.projeto,
                       }))}
@@ -529,12 +637,15 @@ function Dashboard() {
                       <YAxis type="category" dataKey="projeto" width={180} />
                       <Tooltip formatter={(v: number) => currency.format(v)} />
                       <Legend />
-                      <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome)} />
-                      <Bar dataKey="Realizado" fill="hsl(160 70% 45%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome)} />
+                      <Bar dataKey="Rec. Orç." fill="hsl(160 50% 70%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, "RECEITA")} />
+                      <Bar dataKey="Rec. Real." fill="hsl(160 60% 40%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, "RECEITA")} />
+                      <Bar dataKey="Desp. Orç." fill="hsl(0 50% 75%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, "DESPESA")} />
+                      <Bar dataKey="Desp. Real." fill="hsl(0 65% 50%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, "DESPESA")} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
+
             </TabsContent>
           </Tabs>
 
@@ -566,8 +677,10 @@ function Dashboard() {
                     <BarChart
                       data={rubricas.map((r) => ({
                         rubrica: r.rubrica,
-                        Orçamentado: r.orcado,
-                        Realizado: r.realizado,
+                        "Rec. Orç.": r.orcadoReceita,
+                        "Rec. Real.": r.realizadoReceita,
+                        "Desp. Orç.": r.orcadoDespesa,
+                        "Desp. Real.": r.realizadoDespesa,
                       }))}
                       layout="vertical"
                       margin={{ left: 20, right: 20 }}
@@ -577,8 +690,10 @@ function Dashboard() {
                       <YAxis type="category" dataKey="rubrica" width={200} />
                       <Tooltip formatter={(v: number) => currency.format(v)} />
                       <Legend />
-                      <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" />
-                      <Bar dataKey="Realizado" fill="hsl(160 70% 45%)" />
+                      <Bar dataKey="Rec. Orç." fill="hsl(160 50% 70%)" />
+                      <Bar dataKey="Rec. Real." fill="hsl(160 60% 40%)" />
+                      <Bar dataKey="Desp. Orç." fill="hsl(0 50% 75%)" />
+                      <Bar dataKey="Desp. Real." fill="hsl(0 65% 50%)" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -586,6 +701,7 @@ function Dashboard() {
             </TabsContent>
 
           </Tabs>
+
         </CardContent>
       </Card>
 

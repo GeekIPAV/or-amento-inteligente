@@ -1,6 +1,27 @@
+/**
+ * SIGN CONVENTION (SNC → App)
+ *
+ * Raw data has separate `debito` and `credito` columns.
+ * Derived values follow this convention:
+ *
+ * Revenue (conta 7xx): receita = credito - debito  → POSITIVE
+ * Expense (conta 6xx): despesa = debito - credito  → POSITIVE
+ *   (represents magnitude of cost, always stored positive)
+ *
+ * Net calculations:
+ *   resultado = receita - despesa
+ *   (positive = surplus, negative = deficit)
+ *
+ * Budget comparison:
+ *   desvio_receita = realizado - orcado  (+ = over-performing)
+ *   desvio_despesa = orcado - realizado  (+ = under-spending)
+ *   exec_receita = realizado / orcado
+ *   exec_despesa = realizado / orcado  (alert if > 1.0)
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
 
 type ProjRpc = { projeto: string; nome_projeto?: string; receita: number; despesa: number };
 type RubRpc = { rubrica: string; receita: number; despesa: number };
@@ -170,10 +191,10 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       RECEITA: Array(12).fill(0) as number[],
       DESPESA: Array(12).fill(0) as number[],
     };
-    // Por projeto (filtrado) — chaveado por nome_display
-    const porProjeto = new Map<string, { projeto: string; orcado: number }>();
-    // Por rubrica (filtrado) — uma linha por rubrica, sem split por tipo
-    const porRubrica = new Map<string, { rubrica: string; orcado: number }>();
+    // Por projeto (filtrado) — chaveado por nome_display, separado por tipo
+    const porProjeto = new Map<string, { projeto: string; orcadoReceita: number; orcadoDespesa: number }>();
+    // Por rubrica (filtrado) — separado por tipo
+    const porRubrica = new Map<string, { rubrica: string; orcadoReceita: number; orcadoDespesa: number }>();
 
     for (const o of orcs) {
       const tipo = o.tipo as "RECEITA" | "DESPESA";
@@ -189,16 +210,24 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       const nomes = nomesByOrcProjeto.get(o.projeto);
       const targets = nomes && nomes.size > 0 ? Array.from(nomes) : ["(Sem projeto)"];
       for (const nome of targets) {
-        const pe = porProjeto.get(nome);
-        if (pe) pe.orcado += v;
-        else porProjeto.set(nome, { projeto: nome, orcado: v });
+        let pe = porProjeto.get(nome);
+        if (!pe) {
+          pe = { projeto: nome, orcadoReceita: 0, orcadoDespesa: 0 };
+          porProjeto.set(nome, pe);
+        }
+        if (tipo === "RECEITA") pe.orcadoReceita += v;
+        else pe.orcadoDespesa += v;
       }
 
       const rub = (o.rubrica ?? "").trim();
       if (rub) {
-        const re = porRubrica.get(rub);
-        if (re) re.orcado += v;
-        else porRubrica.set(rub, { rubrica: rub, orcado: v });
+        let re = porRubrica.get(rub);
+        if (!re) {
+          re = { rubrica: rub, orcadoReceita: 0, orcadoDespesa: 0 };
+          porRubrica.set(rub, re);
+        }
+        if (tipo === "RECEITA") re.orcadoReceita += v;
+        else re.orcadoDespesa += v;
       }
     }
 
@@ -227,10 +256,24 @@ export const resumoDashboard = createServerFn({ method: "GET" })
     // Realizados — KPIs e projetos (intervalo + multi-ano) — chaveado por nome_display
     let receitaReal = 0;
     let despesaReal = 0;
-    type ProjRow = { projeto: string; nome: string; orcado: number; realizado: number };
+    type ProjRow = {
+      projeto: string;
+      nome: string;
+      orcadoReceita: number;
+      orcadoDespesa: number;
+      realizadoReceita: number;
+      realizadoDespesa: number;
+    };
     const projMap = new Map<string, ProjRow>();
     for (const p of porProjeto.values()) {
-      projMap.set(p.projeto, { projeto: p.projeto, nome: p.projeto, orcado: p.orcado, realizado: 0 });
+      projMap.set(p.projeto, {
+        projeto: p.projeto,
+        nome: p.projeto,
+        orcadoReceita: p.orcadoReceita,
+        orcadoDespesa: p.orcadoDespesa,
+        realizadoReceita: 0,
+        realizadoDespesa: 0,
+      });
     }
 
     for (const y of anosAlvo) {
@@ -238,42 +281,78 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       for (const r of m.values()) {
         receitaReal += r.receita;
         despesaReal += r.despesa;
-        const exec = Number(r.receita ?? 0) + Number(r.despesa ?? 0);
-        if (exec === 0) continue;
-        const e = projMap.get(r.projeto);
-        if (e) { e.realizado += exec; e.nome = r.nome; }
-        else projMap.set(r.projeto, { projeto: r.projeto, nome: r.nome, orcado: 0, realizado: exec });
+        const exec = Number(r.receita ?? 0) - Number(r.despesa ?? 0);
+        if (exec === 0 && r.receita === 0 && r.despesa === 0) continue;
+        let e = projMap.get(r.projeto);
+        if (!e) {
+          e = {
+            projeto: r.projeto,
+            nome: r.nome,
+            orcadoReceita: 0,
+            orcadoDespesa: 0,
+            realizadoReceita: 0,
+            realizadoDespesa: 0,
+          };
+          projMap.set(r.projeto, e);
+        }
+        e.realizadoReceita += Number(r.receita ?? 0);
+        e.realizadoDespesa += Number(r.despesa ?? 0);
+        e.nome = r.nome;
       }
     }
 
 
     // Realizados — por rubrica (intervalo + multi-ano), via match conta→rubrica.
-    // Soma receita + despesa como valor absoluto executado por rubrica.
-    type RubRow = { rubrica: string; orcado: number; realizado: number };
+    type RubRow = {
+      rubrica: string;
+      orcadoReceita: number;
+      orcadoDespesa: number;
+      realizadoReceita: number;
+      realizadoDespesa: number;
+    };
     const rubMap = new Map<string, RubRow>();
     for (const r of porRubrica.values()) {
-      rubMap.set(r.rubrica, { ...r, realizado: 0 });
+      rubMap.set(r.rubrica, {
+        rubrica: r.rubrica,
+        orcadoReceita: r.orcadoReceita,
+        orcadoDespesa: r.orcadoDespesa,
+        realizadoReceita: 0,
+        realizadoDespesa: 0,
+      });
     }
     for (const y of anosAlvo) {
       const m = await rubricaRange(context.supabase, y, mesIni, mesFim);
       for (const r of m.values()) {
-        const exec = Number(r.receita ?? 0) + Number(r.despesa ?? 0);
-        if (exec === 0) continue;
-        const e = rubMap.get(r.rubrica);
-        if (e) e.realizado += exec;
-        else rubMap.set(r.rubrica, { rubrica: r.rubrica, orcado: 0, realizado: exec });
+        const exec = Number(r.receita ?? 0) - Number(r.despesa ?? 0);
+        if (exec === 0 && r.receita === 0 && r.despesa === 0) continue;
+        let e = rubMap.get(r.rubrica);
+        if (!e) {
+          e = {
+            rubrica: r.rubrica,
+            orcadoReceita: 0,
+            orcadoDespesa: 0,
+            realizadoReceita: 0,
+            realizadoDespesa: 0,
+          };
+          rubMap.set(r.rubrica, e);
+        }
+        e.realizadoReceita += Number(r.receita ?? 0);
+        e.realizadoDespesa += Number(r.despesa ?? 0);
       }
     }
 
 
     const grafico = Array.from({ length: mesFim - mesIni + 1 }, (_, i) => {
       const idx = mesIni - 1 + i;
+      const receitaReal = realMensal.RECEITA[idx];
+      const despesaReal = realMensal.DESPESA[idx];
       return {
         mes: idx + 1,
         receitaOrc: orcMensal.RECEITA[idx],
-        receitaReal: realMensal.RECEITA[idx],
+        receitaReal,
         despesaOrc: orcMensal.DESPESA[idx],
-        despesaReal: realMensal.DESPESA[idx],
+        despesaReal,
+        resultado: receitaReal - despesaReal,
       };
     });
 
@@ -285,6 +364,7 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       intervalo: { ano, mesIni, mesFim, anosCumulativo, anosAlvo },
     };
   });
+
 
 
 
