@@ -356,13 +356,25 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       };
     });
 
+    const projetos = Array.from(projMap.values()).map((p) => ({
+      ...p,
+      orcado: p.orcadoReceita - p.orcadoDespesa,
+      realizado: p.realizadoReceita - p.realizadoDespesa,
+    }));
+    const rubricas = Array.from(rubMap.values()).map((r) => ({
+      ...r,
+      orcado: r.orcadoReceita - r.orcadoDespesa,
+      realizado: r.realizadoReceita - r.realizadoDespesa,
+    }));
+
     return {
       kpis: { receitaOrc, receitaReal, despesaOrc, despesaReal },
       grafico,
-      projetos: Array.from(projMap.values()),
-      rubricas: Array.from(rubMap.values()),
+      projetos,
+      rubricas,
       intervalo: { ano, mesIni, mesFim, anosCumulativo, anosAlvo },
     };
+
   });
 
 
