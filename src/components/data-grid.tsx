@@ -654,6 +654,7 @@ export function DataGrid<T>({
                           "h-8 border-b border-border/50",
                           row.getIsGrouped() && "bg-muted/40 font-medium",
                           onRowClick && !row.getIsGrouped() && "cursor-pointer hover:bg-muted/50",
+                          getRowClassName?.(row.original),
                         )}
                         style={{ height: ROW_HEIGHT }}
                         onClick={
