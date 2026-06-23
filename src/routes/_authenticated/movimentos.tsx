@@ -182,14 +182,18 @@ function MovimentosPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <SummaryCard label="Créditos" value={fmtEur(summary.cred)} tone="receita" />
-          <SummaryCard label="Débitos" value={fmtEur(summary.deb)} tone="despesa" />
+          <SummaryCard label="Receitas" value={fmtEur(summary.receita)} tone="receita" />
+          <SummaryCard label="Despesas" value={fmtEur(summary.despesa)} tone="despesa" />
           <SummaryCard
-            label="Saldo"
-            value={fmtEur(summary.saldo)}
-            tone={summary.saldo >= 0 ? "receita" : "despesa"}
+            label="Resultado"
+            value={fmtEur(summary.resultado)}
+            tone={summary.resultado >= 0 ? "receita" : "despesa"}
           />
+          {Math.abs(summary.outros) > 0.01 && (
+            <SummaryCard label="Outros" value={fmtEur(summary.outros)} tone="neutral" />
+          )}
         </div>
+
       </div>
 
       <Tabs defaultValue="movimentos">
