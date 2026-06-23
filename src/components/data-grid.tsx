@@ -519,8 +519,7 @@ export function DataGrid<T>({
             }}
           >
             <TableHeader className="sticky top-0 z-10 bg-muted/50 backdrop-blur">
-              {table.getHeaderGroups().map((hg, hgIdx) => {
-                const isLeafRow = hgIdx === table.getHeaderGroups().length - 1;
+              {table.getHeaderGroups().map((hg) => {
                 return (
                 <TableRow key={hg.id} className="hover:bg-transparent">
                   {hg.headers.map((h) => {
