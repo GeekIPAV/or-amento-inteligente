@@ -182,8 +182,12 @@ function ContasRubricasPage() {
           <SummaryCard label="Rubricas" value={String((rubricas ?? []).length)} tone="receita" />
           <SummaryCard label="Contas atribuídas" value={String(contasAtribuidas)} tone="receita" />
           <SummaryCard label="Contas sem rubrica" value={String(contasSemRubrica)} tone="despesa" />
+          {movsSemRubrica > 0 && (
+            <SummaryCard label="⚠ Mov. sem rubrica" value={`${new Intl.NumberFormat("pt-PT").format(movsSemRubrica)} mov.`} tone="despesa" />
+          )}
         </div>
       </div>
+
 
       <div className="flex flex-wrap items-center gap-2">
         <Input
