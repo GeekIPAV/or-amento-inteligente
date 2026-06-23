@@ -28,6 +28,12 @@ import {
 type ProjRow = {
   projeto: string;
   nome?: string | null;
+  orcadoReceita: number;
+  orcadoDespesa: number;
+  orcadoResultado: number;
+  realizadoReceita: number;
+  realizadoDespesa: number;
+  realizadoResultado: number;
   orcado: number;
   realizado: number;
   desvio: number;
