@@ -110,6 +110,10 @@ function ContasRubricasPage() {
   const totalContas = contasList.length;
   const contasAtribuidas = contaToRubrica.size;
   const contasSemRubrica = totalContas - contasAtribuidas;
+  const movsSemRubrica = contasList.reduce(
+    (a, c) => a + (contaToRubrica.get(c.conta) ? 0 : (c.linhas ?? 0)),
+    0,
+  );
 
   const filtered = (rubricas ?? []).filter((r) =>
     r.rubrica.toLowerCase().includes(filter.toLowerCase()),
