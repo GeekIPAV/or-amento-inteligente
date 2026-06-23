@@ -606,7 +606,7 @@ export function DataGrid<T>({
                 </TableRow>
               ))}
               <TableRow className="hover:bg-transparent">
-                {table.getHeaderGroups()[0]?.headers.map((h) => (
+                {table.getHeaderGroups().at(-1)?.headers.map((h) => (
                   <TableHead
                     key={`f-${h.id}`}
                     style={{ width: h.getSize() }}
