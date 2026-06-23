@@ -300,10 +300,13 @@ export const Route = createFileRoute("/_authenticated/")({
 function KpiCard({
   titulo, orcado, realizado, modo,
 }: { titulo: string; orcado: number; realizado: number; modo: "receita" | "despesa" }) {
-  const desvio = orcado - realizado;
+  const desvio = modo === "receita" ? realizado - orcado : orcado - realizado;
   const exec = orcado === 0 ? 0 : realizado / orcado;
-  const positivo = modo === "receita" ? realizado >= orcado : realizado <= orcado;
+  const positivo = desvio >= 0;
   const Icon = modo === "receita" ? TrendingUp : TrendingDown;
+  const desvioLabel = modo === "receita"
+    ? (positivo ? "Desvio (receita extra)" : "Em falta")
+    : (positivo ? "Desvio (poupança)" : "Sobrecusto");
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -318,7 +321,7 @@ function KpiCard({
           <span>Orçamentado</span><span>{currency.format(orcado)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Desvio</span>
+          <span className="text-muted-foreground">{desvioLabel}</span>
           <span className={cn("font-medium", positivo ? "text-emerald-600" : "text-rose-600")}>
             {currency.format(desvio)}
           </span>
@@ -331,6 +334,7 @@ function KpiCard({
     </Card>
   );
 }
+
 
 function Dashboard() {
   const search = Route.useSearch();
