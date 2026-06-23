@@ -552,8 +552,15 @@ function OrcamentoPage() {
             value={fmtEur(summary.saldo)}
             tone={summary.saldo >= 0 ? "receita" : "despesa"}
           />
+          {semProjeto > 0 && (
+            <SummaryCard label="⚠ Sem projeto" value={`${semProjeto} linha${semProjeto === 1 ? "" : "s"}`} tone="despesa" />
+          )}
+          {semRubrica > 0 && (
+            <SummaryCard label="⚠ Sem rubrica" value={`${semRubrica} linha${semRubrica === 1 ? "" : "s"}`} tone="despesa" />
+          )}
         </div>
       </div>
+
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
