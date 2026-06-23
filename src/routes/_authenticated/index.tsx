@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { DashboardPeek, type PeekScope } from "@/components/dashboard-peek";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line,
 } from "recharts";
+
 import { z } from "zod";
 import { resumoDashboard, anosDisponiveis, mesesDisponiveis } from "@/lib/dashboard.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
