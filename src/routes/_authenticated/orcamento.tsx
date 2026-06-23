@@ -486,6 +486,14 @@ function OrcamentoPage() {
     }
     return { receitas, despesas, saldo: receitas - despesas };
   }, [filteredFlatRows]);
+  const semProjeto = useMemo(
+    () => linhas.filter((l) => !l.projeto || l.projeto.trim() === "").length,
+    [linhas],
+  );
+  const semRubrica = useMemo(
+    () => linhas.filter((l) => !l.rubrica || l.rubrica.trim() === "").length,
+    [linhas],
+  );
   const fmtEur = (n: number) =>
     new Intl.NumberFormat("pt-PT", {
       style: "currency",
