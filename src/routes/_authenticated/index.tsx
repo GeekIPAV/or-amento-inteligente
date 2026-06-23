@@ -422,24 +422,26 @@ function Dashboard() {
     });
   };
   const openProjeto = (projeto: string, nome: string, tipo?: "RECEITA" | "DESPESA") => {
+    const isSem = projeto === SEM_PROJETO || nome === SEM_PROJETO;
     setPeek({
-      titulo: nome,
+      titulo: isSem ? "⚠ Movimentos sem projeto atribuído" : nome,
       subtitulo: `${descricaoPeriodo}${tipo ? ` · ${tipo === "RECEITA" ? "Receitas" : "Despesas"}` : ""}`,
       anos: anosAlvo,
       mesIni: (data?.intervalo as any)?.mesIni ?? 1,
       mesFim: (data?.intervalo as any)?.mesFim ?? 12,
-      projeto,
+      projeto: isSem ? SENTINEL_SEM_PROJETO : projeto,
       tipo: tipo ?? null,
     });
   };
   const openRubrica = (rubrica: string) => {
+    const isSem = rubrica === SEM_RUBRICA;
     setPeek({
-      titulo: rubrica,
+      titulo: isSem ? "⚠ Movimentos sem rúbrica atribuída" : rubrica,
       subtitulo: `Rubrica · ${descricaoPeriodo}`,
       anos: anosAlvo,
       mesIni: (data?.intervalo as any)?.mesIni ?? 1,
       mesFim: (data?.intervalo as any)?.mesFim ?? 12,
-      rubrica,
+      rubrica: isSem ? SENTINEL_SEM_RUBRICA : rubrica,
     });
   };
 
