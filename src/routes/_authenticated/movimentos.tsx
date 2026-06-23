@@ -131,6 +131,27 @@ function MovimentosPage() {
         cell: ({ getValue }) => (getValue() as string) ?? "—",
       },
       {
+        id: "valor",
+        header: sortHeader("Valor"),
+        accessorFn: (r: Mov) => {
+          const conta = String(r.conta ?? "");
+          if (conta.startsWith("7")) return Number(r.credito) - Number(r.debito);
+          if (conta.startsWith("6")) return -(Number(r.debito) - Number(r.credito));
+          return Number(r.credito) - Number(r.debito);
+        },
+        filterFn: numFilterFn,
+        meta: { filterType: "number" },
+        size: 140,
+        enableGrouping: false,
+        aggregationFn: "sum",
+        cell: ({ getValue }) => (
+          <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" showZeroAsDash />
+        ),
+        aggregatedCell: ({ getValue }) => (
+          <CurrencyCell value={Number(getValue() ?? 0)} tone="auto" />
+        ),
+      },
+      {
         accessorKey: "debito",
         header: sortHeader("Débito"),
         filterFn: numFilterFn,
@@ -168,6 +189,7 @@ function MovimentosPage() {
           <CurrencyCell value={Number(getValue() ?? 0)} tone="receita" />
         ),
       },
+
     ],
     [],
   );
