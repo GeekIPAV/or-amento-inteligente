@@ -213,7 +213,7 @@ export const resumoDashboard = createServerFn({ method: "GET" })
       else despesaOrc += v;
 
       const nomes = nomesByOrcProjeto.get(o.projeto);
-      const targets = nomes && nomes.size > 0 ? Array.from(nomes) : ["(Sem projeto)"];
+      const targets = nomes && nomes.size > 0 ? Array.from(nomes) : [SEM_PROJETO];
       for (const nome of targets) {
         let pe = porProjeto.get(nome);
         if (!pe) {
@@ -224,16 +224,14 @@ export const resumoDashboard = createServerFn({ method: "GET" })
         else pe.orcadoDespesa += v;
       }
 
-      const rub = (o.rubrica ?? "").trim();
-      if (rub) {
-        let re = porRubrica.get(rub);
-        if (!re) {
-          re = { rubrica: rub, orcadoReceita: 0, orcadoDespesa: 0 };
-          porRubrica.set(rub, re);
-        }
-        if (tipo === "RECEITA") re.orcadoReceita += v;
-        else re.orcadoDespesa += v;
+      const rub = (o.rubrica ?? "").trim() || SEM_RUBRICA;
+      let re = porRubrica.get(rub);
+      if (!re) {
+        re = { rubrica: rub, orcadoReceita: 0, orcadoDespesa: 0 };
+        porRubrica.set(rub, re);
       }
+      if (tipo === "RECEITA") re.orcadoReceita += v;
+      else re.orcadoDespesa += v;
     }
 
 
