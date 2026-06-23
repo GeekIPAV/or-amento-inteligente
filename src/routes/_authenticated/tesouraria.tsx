@@ -360,12 +360,11 @@ function TesourariaPage() {
         </div>
       </div>
 
-      <DataGrid
-        title={`Previsões (${previsoes.length})`}
-        rows={previsoes}
+      <DataGrid<Previsao>
+        data={previsoes}
         columns={columns}
         getRowId={(r) => r.id}
-        emptyText="Sem previsões para este ano."
+        emptyMessage="Sem previsões para este ano."
       />
 
       <PrevisaoSheet
