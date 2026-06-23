@@ -225,6 +225,8 @@ function MovimentosPage() {
         </TabsList>
         <TabsContent value="movimentos">
           <DataGrid<Mov>
+            initialColumnVisibility={{ debito: false, credito: false }}
+
             data={data}
             columns={columns}
             getRowId={(r) => r.id}
