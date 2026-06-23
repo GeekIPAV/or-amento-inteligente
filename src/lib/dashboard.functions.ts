@@ -22,6 +22,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const SEM_PROJETO = "⚠ Por atribuir — Projeto";
+export const SEM_RUBRICA = "⚠ Por atribuir — Rúbrica";
+export const SENTINEL_SEM_PROJETO = "__sem_projeto__";
+export const SENTINEL_SEM_RUBRICA = "__sem_rubrica__";
+
 
 type ProjRpc = { projeto: string; nome_projeto?: string; receita: number; despesa: number };
 type RubRpc = { rubrica: string; receita: number; despesa: number };
