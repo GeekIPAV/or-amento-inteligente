@@ -545,15 +545,13 @@ function Dashboard() {
               {projetos.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-12">Sem dados para apresentar.</p>
               ) : (
-                <div style={{ height: Math.max(280, projetos.length * 44 + 60) }}>
+                <div style={{ height: Math.max(280, projetos.length * 36 + 60) }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={projetos.map((p) => ({
                         projeto: p.nome ?? p.projeto,
-                        "Rec. Orç.": p.orcadoReceita,
-                        "Rec. Real.": p.realizadoReceita,
-                        "Desp. Orç.": p.orcadoDespesa,
-                        "Desp. Real.": p.realizadoDespesa,
+                        Orçamentado: p.orcado,
+                        Realizado: p.realizado,
                         _projeto: p.projeto,
                         _nome: p.nome ?? p.projeto,
                       }))}
@@ -565,14 +563,13 @@ function Dashboard() {
                       <YAxis type="category" dataKey="projeto" width={180} />
                       <Tooltip formatter={(v: number) => currency.format(v)} />
                       <Legend />
-                      <Bar dataKey="Rec. Orç." fill="hsl(160 50% 70%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, "RECEITA")} />
-                      <Bar dataKey="Rec. Real." fill="hsl(160 60% 40%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, "RECEITA")} />
-                      <Bar dataKey="Desp. Orç." fill="hsl(0 50% 75%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, "DESPESA")} />
-                      <Bar dataKey="Desp. Real." fill="hsl(0 65% 50%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome, "DESPESA")} />
+                      <Bar dataKey="Orçamentado" fill="hsl(220 70% 60%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome)} />
+                      <Bar dataKey="Realizado" fill="hsl(160 70% 45%)" cursor="pointer" onClick={(d: any) => openProjeto(d._projeto, d._nome)} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
+
 
             </TabsContent>
           </Tabs>
